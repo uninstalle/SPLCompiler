@@ -87,7 +87,7 @@
     <None Include="Scanner\Scanner.l" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="defs.h" />
+    <ClInclude Include="common\defs.h" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>

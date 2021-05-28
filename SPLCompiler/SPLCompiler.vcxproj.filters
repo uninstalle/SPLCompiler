@@ -33,7 +33,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="defs.h">
+    <ClInclude Include="common\defs.h">
       <Filter>common</Filter>
     </ClInclude>
   </ItemGroup>
