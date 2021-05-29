@@ -95,6 +95,16 @@ OP_SEMI
 %token <integer> CONST_INTEGER
 %token <character> CONST_CHAR
 
+// fix s/r conflict of routine_part
+%precedence EMPTY_ROUTINE_PART
+%precedence KW_FUNCTION KW_PROCEDURE
+
+// fix s/r conflict of if then else
+%precedence KW_THEN
+%precedence KW_ELSE 
+
+
+
 %%
 
 program:
@@ -134,12 +144,12 @@ routine_head:
     ;
 
 label_part:
-    /* empty */
+    %empty
     ;
 
 const_part:
     KW_CONST const_expr_list
-    | /* empty */
+    | %empty
     ;
 
 const_expr_list:
@@ -157,7 +167,7 @@ const_value:
 
 type_part:
     KW_TYPE type_decl_list
-    | /* empty */
+    | %empty
     ;
 
 type_decl_list:
@@ -209,7 +219,7 @@ name_list:
 
 var_part:
     KW_VAR var_decl_list
-    | /* empty */
+    | %empty
     ;
 
 var_decl_list:
@@ -226,7 +236,7 @@ routine_part:
     | routine_part procedure_decl
     | function_decl
     | procedure_decl
-    | /* empty */
+    | %empty %prec EMPTY_ROUTINE_PART
     ;
 
 function_decl:
@@ -247,7 +257,7 @@ procedure_head:
 
 parameters:
     OP_LP para_decl_list OP_RP
-    | /* empty */
+    | %empty
     ;
 
 para_decl_list:
@@ -278,7 +288,7 @@ compound_stmt:
 
 stmt_list:
     stmt_list stmt OP_SEMI 
-    | /* empty */
+    | %empty
     ;
 
 stmt:
@@ -318,7 +328,7 @@ if_stmt:
 
 else_clause: 
     KW_ELSE stmt
-    | /* empty */
+    | %empty %prec KW_THEN
     ;
 
 repeat_stmt:
