@@ -102,17 +102,7 @@ program:
     ;
 
 program_head:
-    KW_PROGRAM id OP_SEMI
-    ;
-
-id:
-    keywords
-    | sys_con
-    | sys_funct
-    | sys_proc
-    | sys_type
-    | SYS_READ
-    | NAME
+    KW_PROGRAM NAME OP_SEMI
     ;
 
 keywords:
@@ -213,8 +203,8 @@ field_decl:
     ;
 
 name_list:
-    name_list OP_COMMA id
-    | id
+    name_list OP_COMMA NAME
+    | NAME
     ;
 
 var_part:
@@ -309,14 +299,14 @@ non_label_stmt:
     ;
 
 assign_stmt:
-    id OP_ASSIGN expression
-    | id OP_LB expression OP_RB OP_ASSIGN expression
-    | id OP_DOT id OP_ASSIGN expression
+    NAME OP_ASSIGN expression
+    | NAME OP_LB expression OP_RB OP_ASSIGN expression
+    | NAME OP_DOT NAME OP_ASSIGN expression
     ;
 
 proc_stmt:
-    id
-    | id OP_LP args_list OP_RP
+    NAME
+    | NAME OP_LP args_list OP_RP
     | sys_proc
     | sys_proc OP_LP expression_list OP_RP
     | SYS_READ OP_LP factor OP_RP
@@ -340,7 +330,7 @@ while_stmt:
     ;
 
 for_stmt:
-    KW_FOR id OP_ASSIGN expression direction expression KW_DO stmt
+    KW_FOR NAME OP_ASSIGN expression direction expression KW_DO stmt
     ;
 
 direction:
@@ -359,7 +349,7 @@ case_expr_list:
 
 case_expr:
     const_value OP_COLON stmt OP_SEMI
-    | id  OP_COLON stmt OP_SEMI
+    | NAME OP_COLON stmt OP_SEMI
     ;
 
 goto_stmt:
@@ -405,8 +395,8 @@ factor:
     | OP_LP expression  OP_RP
     | OP_NOT factor 
     | OP_MINUS factor
-    | id OP_LB expression OP_RB
-    | id OP_DOT id
+    | NAME OP_LB expression OP_RB
+    | NAME OP_DOT NAME
     ;
 
 args_list:

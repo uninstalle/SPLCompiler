@@ -443,7 +443,7 @@ unrecognized .
 %}
 
 {name} {
-    // temporary, need to copy the value
+    // TODO: copy the value
     yylval.string = yytext;
     return NAME;
 }
