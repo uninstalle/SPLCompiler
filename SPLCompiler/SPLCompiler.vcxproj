@@ -76,18 +76,18 @@
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <RemoteLdToolExe>clang</RemoteLdToolExe>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <RemoteLdToolExe>clang</RemoteLdToolExe>
+  </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="1.l" />
     <None Include="Parser\Parser.y" />
     <None Include="Scanner\Scanner.l" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="common\defs.h" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -95,8 +95,16 @@
       <AdditionalOptions>
       </AdditionalOptions>
     </ClCompile>
+    <Link />
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <RemotePreBuildEvent>
+      <Command>flex -o Scanner.c "./Scanner/Scanner.l" &amp; bison -o Parser.c -d "./Parser/Parser.y"</Command>
+    </RemotePreBuildEvent>
     <Link>
-      <AdditionalOptions>-pthread %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>Scanner.c;Parser.c;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -105,8 +113,16 @@
       <AdditionalOptions>
       </AdditionalOptions>
     </ClCompile>
+    <Link />
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <RemotePreBuildEvent>
+      <Command>flex -o Scanner.c "./Scanner/Scanner.l" &amp; bison -o Parser.c -d "./Parser/Parser.y"</Command>
+    </RemotePreBuildEvent>
     <Link>
-      <AdditionalOptions>-pthread %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>Scanner.c;Parser.c;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

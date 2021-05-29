@@ -4,7 +4,6 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="1.l" />
     <None Include="Scanner\Scanner.l">
       <Filter>Scanner</Filter>
     </None>
@@ -31,10 +30,5 @@
     <Filter Include="common">
       <UniqueIdentifier>{1dfeb806-3191-4a13-af27-bb9da635fb24}</UniqueIdentifier>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="common\defs.h">
-      <Filter>common</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

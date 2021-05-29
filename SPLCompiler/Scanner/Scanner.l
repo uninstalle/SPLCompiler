@@ -1,7 +1,5 @@
 %{
-    #include <stdio.h>
-    #include <string.h>
-    #include "y.tab.h"
+    #include "Parser.h"
 %}
 
 
@@ -88,7 +86,7 @@ op_equal "="
 op_unequal "<>"
 op_not NOT
 op_assign ":="
-op_mod MOD
+op_mod MOD|"%"
 op_dotdot ".."
 op_semi ";"
 
@@ -467,8 +465,7 @@ unrecognized .
 {newline} ;
 
 {unrecognized} {
-    printf("Unrecognized symbol: %s\n",yytext);
-    exit(1);
+    printf("\nUnrecognized symbol: %s\n",yytext);
 }
 
 

@@ -1,10 +1,7 @@
 %{
     #include <stdio.h>
-
     extern int yylex(void);
-    extern int yyparse(void);
     void yyerror(const char* s);
-    int yydebug = 1;
 %}
 
 %union
@@ -415,3 +412,12 @@ args_list:
 
 %%
 
+int yywrap()
+{
+	return 1;
+}
+
+void yyerror(const char* s)
+{
+	fprintf(stderr,"\n%s\n",s);
+}
