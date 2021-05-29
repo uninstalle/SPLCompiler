@@ -414,5 +414,5 @@ args_list:
 
 void yyerror(const char* s)
 {
-    std::cerr<<std::endl<<s<<std::endl;
+    std::cerr << std::endl << s << std::endl;
 }

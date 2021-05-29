@@ -35,11 +35,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\main.cpp" />
+    <None Include="src\Parser.yy" />
+    <None Include="src\Scanner.l" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\Parser.yy" />
-    <None Include="src\Scanner.ll" />
+    <ClCompile Include="src\log.cc" />
+    <ClCompile Include="src\main.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\log.hh" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{a1cc3568-00cd-4e99-8081-29d7f71fc86f}</ProjectGuid>
@@ -97,7 +101,7 @@
       </Command>
     </PreBuildEvent>
     <RemotePreBuildEvent>
-      <Command>flex -o "./src/Scanner.cc" "./src/Scanner.ll" &amp; bison -o "./src/Parser.cc" -d "./src/Parser.yy"</Command>
+      <Command>flex -o "./src/Scanner.cc" "./src/Scanner.l" &amp; bison -o "./src/Parser.cc" -d "./src/Parser.yy"</Command>
     </RemotePreBuildEvent>
     <Link>
       <AdditionalDependencies>./src/Scanner.cc;./src/Parser.cc;%(AdditionalDependencies)</AdditionalDependencies>
@@ -115,7 +119,7 @@
       </Command>
     </PreBuildEvent>
     <RemotePreBuildEvent>
-      <Command>flex -o "./src/Scanner.cc" "./src/Scanner.ll" &amp; bison -o "./src/Parser.cc" -d "./src/Parser.yy"</Command>
+      <Command>flex -o "./src/Scanner.cc" "./src/Scanner.l" &amp; bison -o "./src/Parser.cc" -d "./src/Parser.yy"</Command>
     </RemotePreBuildEvent>
     <Link>
       <AdditionalDependencies>./src/Scanner.cc;./src/Parser.cc;%(AdditionalDependencies)</AdditionalDependencies>
