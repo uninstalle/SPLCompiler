@@ -125,7 +125,7 @@ sys_funct:
     SYS_ABS|SYS_CHR|SYS_ODD|SYS_ORD|SYS_PRED|SYS_SQR|SYS_SQRT|SYS_SUCC;
 
 sys_proc:
-    SYS_WRITE|SYS_WRITELN;
+    SYS_WRITE|SYS_WRITELN|SYS_READ;
 
 sys_type:
     SYS_BOOLEAN|SYS_CHAR|SYS_INTEGER|SYS_REAL;
@@ -319,7 +319,6 @@ proc_stmt:
     | NAME OP_LP args_list OP_RP
     | sys_proc
     | sys_proc OP_LP expression_list OP_RP
-    | SYS_READ OP_LP factor OP_RP
     ;
 
 if_stmt:
