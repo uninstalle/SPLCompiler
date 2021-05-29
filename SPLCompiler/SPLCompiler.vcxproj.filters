@@ -1,34 +1,24 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Scanner\Scanner.l">
-      <Filter>Scanner</Filter>
-    </None>
-    <None Include="Parser\Parser.y">
-      <Filter>Parser</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="Scanner">
-      <UniqueIdentifier>{c695fafd-9948-44ad-8a7d-29ad97a570d0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Parser">
-      <UniqueIdentifier>{b461c193-96c5-4671-b4f2-3e333d685d55}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="SemanticAnalyzer">
-      <UniqueIdentifier>{349fd641-ae87-4bdb-a503-1dc7557cb059}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="SourceCodeOptimizer">
-      <UniqueIdentifier>{0b71d8bd-159c-423d-b2d8-2ec62502bc88}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="CodeGenerator">
-      <UniqueIdentifier>{5e70cc8a-d95b-4652-a8fb-920f4e0b5fad}</UniqueIdentifier>
-    </Filter>
     <Filter Include="common">
       <UniqueIdentifier>{1dfeb806-3191-4a13-af27-bb9da635fb24}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{06bb1b9c-7987-4452-86e0-a7ec79a57013}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\Parser.yy">
+      <Filter>src</Filter>
+    </None>
+    <None Include="src\Scanner.ll">
+      <Filter>src</Filter>
+    </None>
   </ItemGroup>
 </Project>

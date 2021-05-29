@@ -1,5 +1,5 @@
 %{
-    #include <stdio.h>
+    #include <iostream>
     extern int yylex(void);
     void yyerror(const char* s);
 %}
@@ -412,12 +412,7 @@ args_list:
 
 %%
 
-int yywrap()
-{
-	return 1;
-}
-
 void yyerror(const char* s)
 {
-	fprintf(stderr,"\n%s\n",s);
+    std::cerr<<std::endl<<s<<std::endl;
 }

@@ -1,5 +1,5 @@
 %{
-    #include "Parser.h"
+    #include "Parser.hh"
 %}
 
 
@@ -470,3 +470,8 @@ unrecognized .
 
 
 %%
+
+int yywrap()
+{
+    return 1;
+}
