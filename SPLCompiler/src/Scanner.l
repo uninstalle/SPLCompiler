@@ -102,6 +102,7 @@ name [a-zA-Z][_a-zA-Z0-9]*
 const_real -?[0-9]+("."[0-9]+|e-?[0-9]+)
 const_integer -?[0-9]+
 const_char '.'
+const_string '.{0,255}'
 
 /* white space */
 ws [ \t]+
@@ -284,16 +285,19 @@ unrecognized .
 
 {sys_false} {
     colno += yyleng;
+    LexLogger.print("SYS_CONST:").println(yytext);
     return SYS_FALSE;
 }
 
 {sys_maxint} {
     colno += yyleng;
+    LexLogger.print("SYS_CONST:").println(yytext);
     return SYS_MAXINT;
 }
 
 {sys_true} {
     colno += yyleng;
+    LexLogger.print("SYS_CONST:").println(yytext);
     return SYS_TRUE;
 }
 
@@ -544,6 +548,13 @@ unrecognized .
     colno += yyleng;
     LexLogger.print("CHAR:").println(yytext);
     return CONST_CHAR;
+}
+
+{const_string} {
+    yylval.string = yytext;
+    colno += yyleng;
+    LexLogger.print("STRING:").println(yytext);
+    return CONST_STRING;
 }
 
 {ws} {

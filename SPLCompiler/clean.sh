@@ -4,3 +4,4 @@ rm ./src/Parser.cc
 rm ./src/Parser.hh
 rm ./bin/main
 rm lex.log
+rm yacc.log

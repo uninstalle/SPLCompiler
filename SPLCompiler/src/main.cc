@@ -1,5 +1,6 @@
 #include <iostream>
 #include "Parser.hh"
+#include "ast.hh"
 
 int main(int args, char** argv)
 {
@@ -25,5 +26,7 @@ int main(int args, char** argv)
 		yyparse();
 	}
 
-	return 0;
+    ASTHandler::print(ASTHead);
+
+    return 0;
 }

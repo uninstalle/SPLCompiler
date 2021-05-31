@@ -1,3 +1,4 @@
+#pragma once
 #include <fstream>
 #include <string>
 
@@ -41,3 +42,4 @@ public:
 };
 
 extern Logger LexLogger;
+extern Logger YaccLogger;
