@@ -32,10 +32,12 @@ public:
             current->brother = static_cast<pASTNode>(node);
         }
     }
-    virtual void print() { YaccLogger.println("Node_Base"); }
+    virtual void print()
+    {
+        YaccLogger.print("Node_Base");
+    }
     virtual ~ASTNode() = default;
 };
-
 
 class ASTNode_Program : public ASTNode
 {
@@ -52,10 +54,20 @@ public:
 
 class ASTNode_Routine : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_Routine");
+    }
 };
 
 class ASTNode_RoutineHead : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_Head");
+    }
 };
 
 class ASTNode_Const : public ASTNode
@@ -148,18 +160,37 @@ class ASTNode_ConstExpr : public ASTNode
 
 public:
     ASTNode_ConstExpr(std::string name) : constName(name) {}
+    void print() override
+    {
+        YaccLogger.println("Node_ConstExpr " + constName);
+    }
 };
 
 class ASTNode_ConstExprList : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_ConstExprList");
+    }
 };
 
 class ASTNode_Type : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_Type");
+    }
 };
 
 class ASTNode_SimpleType : public ASTNode_Type
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_SimpleType");
+    }
 };
 
 class ASTNode_SimpleTypePlain : public ASTNode_SimpleType
@@ -168,10 +199,19 @@ class ASTNode_SimpleTypePlain : public ASTNode_SimpleType
 
 public:
     ASTNode_SimpleTypePlain(std::string type) : typeName(type) {}
+    void print() override
+    {
+        YaccLogger.println("Node_SympleTypePlain " + typeName);
+    }
 };
 
 class ASTNode_SimpleTypeEnumerate : public ASTNode_SimpleType
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_SimpleTypeEnum");
+    }
 };
 
 class ASTNode_SimpleTypeSubrange : public ASTNode_SimpleType
@@ -181,14 +221,28 @@ class ASTNode_SimpleTypeSubrange : public ASTNode_SimpleType
 public:
     ASTNode_SimpleTypeSubrange() {}
     ASTNode_SimpleTypeSubrange(std::string begin, std::string end) : begin(begin), end(end) {}
+    void print() override
+    {
+        YaccLogger.println("Node_SympleTypeSubrange");
+    }
 };
 
 class ASTNode_ArrayType : public ASTNode_Type
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_ArrayType");
+    }
 };
 
 class ASTNode_RecordType : public ASTNode_Type
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_RecordType");
+    }
 };
 
 class ASTNode_TypeDef : public ASTNode
@@ -197,10 +251,19 @@ class ASTNode_TypeDef : public ASTNode
 
 public:
     ASTNode_TypeDef(std::string name) : defName(name) {}
+    void print() override
+    {
+        YaccLogger.println("Node_TypeDef " + defName);
+    }
 };
 
 class ASTNode_TypeDeclList : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_TypeDeclList");
+    }
 };
 
 class ASTNode_NameList : public ASTNode
@@ -212,30 +275,67 @@ public:
     {
         name_list.push_back(name);
     }
+    void print() override
+    {
+        YaccLogger.print("Node_NameList ");
+        for (auto &i : name_list)
+            YaccLogger.print(i);
+        YaccLogger.println();
+    }
 };
 
 class ASTNode_FieldDecl : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_FieldDecl");
+    }
 };
 
 class ASTNode_FieldDeclList : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_FieldDeclList");
+    }
 };
 
 class ASTNode_VarDeclList : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_VarDeclList");
+    }
 };
 
 class ASTNode_VarDecl : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_VarDecl");
+    }
 };
 
 class ASTNode_RoutinePart : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_RoutinePart");
+    }
 };
 
 class ASTNode_FunctionDecl : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_FuncDecl");
+    }
 };
 
 class ASTNode_FunctionHead : public ASTNode
@@ -244,10 +344,19 @@ class ASTNode_FunctionHead : public ASTNode
 
 public:
     ASTNode_FunctionHead(std::string name) : functionName(name) {}
+    void print() override
+    {
+        YaccLogger.println("Node_FuncHead " + functionName);
+    }
 };
 
 class ASTNode_ProcedureDecl : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_ProcDecl");
+    }
 };
 
 class ASTNode_ProcedureHead : public ASTNode
@@ -256,26 +365,55 @@ class ASTNode_ProcedureHead : public ASTNode
 
 public:
     ASTNode_ProcedureHead(std::string name) : procedureName(name) {}
+    void print() override
+    {
+        YaccLogger.println("Node_ProcHead " + procedureName);
+    }
 };
 
 class ASTNode_ParaDeclList : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_ParaDeclList");
+    }
 };
 
 class ASTNode_ParaTypeList : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_ParaTypeList");
+    }
 };
 
 class ASTNode_VarParaList : public ASTNode_NameList
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_VarParaList");
+    }
 };
 
 class ASTNode_ValParaList : public ASTNode_NameList
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_ValParaList");
+    }
 };
 
 class ASTNode_StmtList : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_StmtList");
+    }
 };
 
 class ASTNode_Stmt : public ASTNode
@@ -290,6 +428,10 @@ public:
         hasLabel = true;
         this->label = label;
     }
+    void print() override
+    {
+        YaccLogger.println("Node_Stmt");
+    }
 };
 
 class ASTNode_Stmt_Assign : public ASTNode_Stmt
@@ -298,6 +440,10 @@ class ASTNode_Stmt_Assign : public ASTNode_Stmt
 
 public:
     ASTNode_Stmt_Assign(std::string name) : lvalueName(name) {}
+    void print() override
+    {
+        YaccLogger.println("Node_Assign " + lvalueName);
+    }
 };
 
 class ASTNode_Stmt_Proc : public ASTNode_Stmt
@@ -306,22 +452,46 @@ class ASTNode_Stmt_Proc : public ASTNode_Stmt
 
 public:
     ASTNode_Stmt_Proc(std::string name) : procName(name) {}
+    void print() override
+    {
+        YaccLogger.println("Node_Proc " + procName);
+    }
 };
 
 class ASTNode_Stmt_Compound : public ASTNode_Stmt
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_Compound");
+    }
 };
 
 class ASTNode_Stmt_If : public ASTNode_Stmt
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_If");
+    }
 };
 
 class ASTNode_Stmt_Repeat : public ASTNode_Stmt
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_Repeat");
+    }
 };
 
 class ASTNode_Stmt_While : public ASTNode_Stmt
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_While");
+    }
 };
 
 class ASTNode_Stmt_For : public ASTNode_Stmt
@@ -330,10 +500,19 @@ class ASTNode_Stmt_For : public ASTNode_Stmt
 
 public:
     ASTNode_Stmt_For(bool dir) : direction(dir) {}
+    void print() override
+    {
+        YaccLogger.println("Node_For");
+    }
 };
 
 class ASTNode_Stmt_Case : public ASTNode_Stmt
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_Case");
+    }
 };
 
 class ASTNode_Stmt_Goto : public ASTNode_Stmt
@@ -342,6 +521,10 @@ class ASTNode_Stmt_Goto : public ASTNode_Stmt
 
 public:
     ASTNode_Stmt_Goto(int label) : gotoLabel(label) {}
+    void print() override
+    {
+        YaccLogger.println("Node_Goto");
+    }
 };
 
 class ASTNode_Case_Expr : public ASTNode
@@ -351,18 +534,37 @@ class ASTNode_Case_Expr : public ASTNode
 public:
     ASTNode_Case_Expr() {}
     ASTNode_Case_Expr(std::string name) : caseVar(name) {}
+    void print() override
+    {
+        YaccLogger.println("Node_CaseVar");
+    }
 };
 
 class ASTNode_Case_Expr_List : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_CaseExprList");
+    }
 };
 
 class ASTNode_Expr_List : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_ExprList");
+    }
 };
 
 class ASTNode_Expr : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_Expr");
+    }
 };
 
 class ASTNode_Operator : public ASTNode_Expr
@@ -371,6 +573,10 @@ class ASTNode_Operator : public ASTNode_Expr
 
 public:
     ASTNode_Operator(std::string op) : op(op) {}
+    void print() override
+    {
+        YaccLogger.println("Node_Op " + op);
+    }
 };
 
 class ASTNode_Operand : public ASTNode_Expr
@@ -380,24 +586,38 @@ class ASTNode_Operand : public ASTNode_Expr
 public:
     ASTNode_Operand() {}
     ASTNode_Operand(std::string name) : name(name) {}
+    void print() override
+    {
+        YaccLogger.println("Node_Operand " + name);
+    }
 };
 
 class ASTNode_ArgList : public ASTNode
 {
+public:
+    void print() override
+    {
+        YaccLogger.println("Node_Arglist");
+    }
 };
 
 class ASTHandler
 {
 public:
-    static void print(ASTNode *head)
+    static void print(ASTNode *head, int depth)
     {
         ASTNode *current = head;
+        std::string prefix(depth, ' ');
+        YaccLogger.print(prefix);
         current->print();
         if (current->son)
             current = current->son.get();
+        else
+            return;
         do
         {
-            ASTHandler::print(current);
-        } while (current->brother);
+            ASTHandler::print(current, depth + 2);
+            current = (current->brother).get();
+        } while (current);
     }
 };

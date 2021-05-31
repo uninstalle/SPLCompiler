@@ -523,7 +523,8 @@ unrecognized .
 
 {name} {
     // TODO: copy the value
-    yylval.string = yytext;
+   yylval.string = new char [yyleng+1];
+    strcpy(yylval.string,yytext);
     colno += yyleng;
     LexLogger.print("NAME:").println(yytext);
     return NAME;
