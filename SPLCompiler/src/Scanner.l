@@ -2,6 +2,7 @@
     #include <iostream>
     #include "Parser.hh"
     #include "log.hh"
+    #include "ast.hh"
     int lineno = 1;
     int colno = 1;
 %}
@@ -523,36 +524,35 @@ unrecognized .
 
 {name} {
     // TODO: copy the value
-   yylval.string = new char [yyleng+1];
-    strcpy(yylval.string,yytext);
+   yylval.node_name = new ASTNode_Name(yytext);
     colno += yyleng;
     LexLogger.print("NAME:").println(yytext);
     return NAME;
 }
 
 {const_real} {
-    yylval.real = atof(yytext);
+    yylval.node_const = new ASTNode_ConstReal(atof(yytext));
     colno += yyleng;
     LexLogger.print("REAL:").println(yytext);
     return CONST_REAL;
 }
 
 {const_integer} {
-    yylval.integer = atoi(yytext);
+    yylval.node_const = new ASTNode_ConstInteger(atoi(yytext));
     colno += yyleng;
     LexLogger.print("INTEGER:").println(yytext);
     return CONST_INTEGER;
 }
 
 {const_char} {
-    yylval.character = yytext[1];
+    yylval.node_const = new ASTNode_ConstCharacter(yytext[1]);
     colno += yyleng;
     LexLogger.print("CHAR:").println(yytext);
     return CONST_CHAR;
 }
 
 {const_string} {
-    yylval.string = yytext;
+    yylval.node_const = new ASTNode_ConstString(yytext);
     colno += yyleng;
     LexLogger.print("STRING:").println(yytext);
     return CONST_STRING;

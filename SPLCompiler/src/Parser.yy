@@ -8,14 +8,8 @@
 
 %union
 {
-	int integer;
-	double real;
-	char character;
-    char *string;
-    bool boolean;
-
     class ASTNode* node;
-
+    class ASTNode_Name* node_name;
     class ASTNode_Program* node_program;
     class ASTNode_Routine* node_routine;
     class ASTNode_RoutineHead* node_routine_head;
@@ -28,7 +22,7 @@
     class ASTNode_SimpleType* node_simple_type;
     class ASTNode_ArrayType* node_array_type;
     class ASTNode_RecordType* node_record_type;
-    class ASTNode_TypeDef* node_type_def;
+    class ASTNode_TypeDecl* node_type_decl;
     class ASTNode_TypeDeclList* node_type_decl_list;
 
     class ASTNode_NameList* node_name_list;
@@ -52,19 +46,20 @@
 
     class ASTNode_StmtList* node_stmt_list;
     class ASTNode_Stmt* node_stmt;
-    class ASTNode_Stmt_Assign* node_stmt_assign;
-    class ASTNode_Stmt_Proc* node_stmt_proc;
-    class ASTNode_Stmt_If* node_stmt_if;
-    class ASTNode_Stmt_Repeat* node_stmt_repeat;
-    class ASTNode_Stmt_While* node_stmt_while;
-    class ASTNode_Stmt_For* node_stmt_for;
-    class ASTNode_Stmt_Case* node_stmt_case;
-    class ASTNode_Stmt_Goto* node_stmt_goto;
-    class ASTNode_Case_Expr* node_case_expr;
-    class ASTNode_Case_Expr_List* node_case_expr_list;
+    class ASTNode_StmtAssign* node_stmt_assign;
+    class ASTNode_StmtProc* node_stmt_proc;
+    class ASTNode_StmtCompound* node_stmt_compound;
+    class ASTNode_StmtIf* node_stmt_if;
+    class ASTNode_StmtRepeat* node_stmt_repeat;
+    class ASTNode_StmtWhile* node_stmt_while;
+    class ASTNode_StmtFor* node_stmt_for;
+    class ASTNode_StmtCase* node_stmt_case;
+    class ASTNode_StmtGoto* node_stmt_goto;
+    class ASTNode_CaseExpr* node_case_expr;
+    class ASTNode_CaseExprList* node_case_expr_list;
 
     class ASTNode_Expr* node_expr;
-    class ASTNode_Expr_List* node_expr_list;
+    class ASTNode_ExprList* node_expr_list;
     class ASTNode_Operator* node_operator;
     class ASTNode_operand* node_operand;
     class ASTNode_ArgList* node_arg_list;
@@ -145,31 +140,31 @@ OP_MOD
 OP_DOTDOT
 OP_SEMI
 
-%token <string> NAME
-%token <real> CONST_REAL
-%token <integer> CONST_INTEGER
-%token <character> CONST_CHAR
-%token <string> CONST_STRING
+%token <node_name> NAME
+%token <node_const> CONST_REAL
+%token <node_const> CONST_INTEGER
+%token <node_const> CONST_CHAR
+%token <node_const> CONST_STRING
 
 %type <node_program> program
-%type <string> program_head
+%type <node_name> program_head
 %type <node_routine> routine
 %type <node_routine> sub_routine
 %type <node_routine_head> routine_head
 
-%type <string> sys_funct
+%type <node_name> sys_funct
 %type <node_const> sys_con
 %type <node_const> const_value
 %type <node_const_expr> const_expr
 %type <node_const_expr_list> const_expr_list
 %type <node_const_expr_list> const_part
 
-%type <node_type> type_decl
+%type <node_type> type
 %type <node_simple_type> sys_type
 %type <node_simple_type> simple_type_decl
 %type <node_array_type> array_type_decl
 %type <node_record_type> record_type_decl
-%type <node_type_def> type_def
+%type <node_type_decl> type_decl
 %type <node_type_decl_list> type_decl_list
 %type <node_type_decl_list> type_part
 
@@ -193,21 +188,21 @@ OP_SEMI
 %type <node_var_para_list> var_para_list
 %type <node_val_para_list> val_para_list
 
-%type <node_stmt_list> routine_body
-%type <node_stmt_list> compound_stmt
+%type <node_stmt_compound> routine_body
+%type <node_stmt_compound> compound_stmt
 %type <node_stmt_list> stmt_list
 %type <node_stmt> stmt
 %type <node_stmt> non_label_stmt
 
 %type <node_stmt_assign> assign_stmt
 %type <node_stmt_proc> proc_stmt
-%type <node_stmt_proc> sys_proc
+%type <node_name> sys_proc
 %type <node_stmt_if> if_stmt
 %type <node_stmt> else_clause
 %type <node_stmt_repeat> repeat_stmt
 %type <node_stmt_while> while_stmt
 %type <node_stmt_for> for_stmt
-%type <boolean> direction
+%type <node_const> direction
 %type <node_stmt_case> case_stmt
 %type <node_stmt_goto> goto_stmt
 %type <node_case_expr> case_expr
@@ -263,40 +258,40 @@ sys_con:
 
 sys_funct:
     SYS_ABS {
-        $$ = "abs";
+        $$ = new ASTNode_Name("abs");
     }
     |SYS_CHR {
-        $$ = "chr";
+        $$ = new ASTNode_Name("chr");
     }
     |SYS_ODD {
-        $$ = "odd";
+        $$ = new ASTNode_Name("odd");
     }
     |SYS_ORD {
-        $$ = "ord";
+        $$ = new ASTNode_Name("ord");
     }
     |SYS_PRED {
-        $$ = "pred";
+        $$ = new ASTNode_Name("pred");
     }
     |SYS_SQR {
-        $$ = "sqr";
+        $$ = new ASTNode_Name("sqr");
     }
     |SYS_SQRT {
-        $$ = "sqrt";
+        $$ = new ASTNode_Name("sqrt");
     }
     |SYS_SUCC {
-        $$ = "succ";
+        $$ = new ASTNode_Name("succ");
     }
     ;
 
 sys_proc:
     SYS_WRITE {
-        $$ = new ASTNode_Stmt_Proc("write");
+        $$ = new ASTNode_Name("write");
     }
     |SYS_WRITELN {
-        $$ = new ASTNode_Stmt_Proc("writeln");
+        $$ = new ASTNode_Name("writeln");
     }
     |SYS_READ {
-        $$ = new ASTNode_Stmt_Proc("read");
+        $$ = new ASTNode_Name("read");
     }
     ;
 
@@ -371,23 +366,22 @@ const_expr_list:
 
 const_expr:
     NAME OP_EQUAL const_value OP_SEMI {
-        $$ = new ASTNode_ConstExpr($1);
-        $$->append($3);
+        $$ = new ASTNode_ConstExpr($1,$3);
     }
     ;
 
 const_value:
     CONST_INTEGER {
-        $$ = new ASTNode_ConstInteger($1);
+        $$ = $1;
     }
     | CONST_REAL {
-        $$ = new ASTNode_ConstReal($1);
+        $$ = $1;
     }
     | CONST_CHAR {
-        $$ = new ASTNode_ConstCharacter($1);
+        $$ = $1;
     }
     | CONST_STRING {
-        $$ = new ASTNode_ConstString($1);
+        $$ = $1;
     }
     | sys_con {
         $$ = $1;
@@ -404,24 +398,23 @@ type_part:
     ;
 
 type_decl_list:
-    type_decl_list type_def {
+    type_decl_list type_decl {
         $$ = $1;
         $$->append($2);
     }
-    | type_def {
+    | type_decl {
         $$ = new ASTNode_TypeDeclList();
         $$->append($1);
     }
     ;
 
-type_def:
-    NAME OP_EQUAL type_decl OP_SEMI {
-        $$ = new ASTNode_TypeDef($1);
-        $$->append($3);
+type_decl:
+    NAME OP_EQUAL type OP_SEMI {
+        $$ = new ASTNode_TypeDecl($1,$3);
     }
     ;
 
-type_decl:
+type:
     simple_type_decl {
         $$ = $1;
     }
@@ -441,24 +434,18 @@ simple_type_decl:
         $$ = new ASTNode_SimpleTypePlain($1);
     }
     | OP_LP name_list OP_RP {
-        $$ = new ASTNode_SimpleTypeEnumerate();
-        $$->append($2);
+        $$ = new ASTNode_SimpleTypeEnumerate($2);
     }
     | const_value OP_DOTDOT const_value {
-        $$ = new ASTNode_SimpleTypeSubrange();
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_SimpleTypeSubrange($1,$3);
     }
     | OP_MINUS const_value OP_DOTDOT const_value {
         //TODO: is this OP_MINUS necessary? check it
-        $$ = new ASTNode_SimpleTypeSubrange();
-        $$->append($2);
-        $$->append($4);
+        $$ = new ASTNode_SimpleTypeSubrange($2,$4);
     }
     | OP_MINUS const_value OP_DOTDOT OP_MINUS const_value {
-        $$ = new ASTNode_SimpleTypeSubrange();
-        $$->append($2);
-        $$->append($5);
+        //TODO: is this OP_MINUS necessary? check it
+        $$ = new ASTNode_SimpleTypeSubrange($2,$5);
     }
     | NAME OP_DOTDOT NAME {
         $$ = new ASTNode_SimpleTypeSubrange($1,$3);
@@ -466,10 +453,8 @@ simple_type_decl:
     ;
 
 array_type_decl:
-    KW_ARRAY OP_LB simple_type_decl OP_RB KW_OF type_decl {
-        $$ = new ASTNode_ArrayType();
-        $$->append($3);
-        $$->append($6);
+    KW_ARRAY OP_LB simple_type_decl OP_RB KW_OF type {
+        $$ = new ASTNode_ArrayType($3,$6);
     }
     ;
 
@@ -492,10 +477,8 @@ field_decl_list:
     ;
 
 field_decl:
-    name_list OP_COLON type_decl OP_SEMI {
-        $$ = new ASTNode_FieldDecl();
-        $$->append($1);
-        $$->append($3);
+    name_list OP_COLON type OP_SEMI {
+        $$ = new ASTNode_FieldDecl($1,$3);
     }
     ;
 
@@ -531,10 +514,8 @@ var_decl_list:
     ;
 
 var_decl:
-    name_list OP_COLON type_decl OP_SEMI {
-        $$ = new ASTNode_VarDecl();
-        $$->append($1);
-        $$->append($3);
+    name_list OP_COLON type OP_SEMI {
+        $$ = new ASTNode_VarDecl($1,$3);
     }
     ;
 
@@ -613,28 +594,22 @@ para_decl_list:
 
 para_type_list:
     var_para_list OP_COLON simple_type_decl {
-        $$ = new ASTNode_ParaTypeList();
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_ParaTypeList($1,$3);
     }
     | val_para_list OP_COLON simple_type_decl {
-        $$ = new ASTNode_ParaTypeList();
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_ParaTypeList($1,$3);
         }
     ;
 
 var_para_list:
     KW_VAR name_list {
-        $$ = new ASTNode_VarParaList();
-        $$->append($2);
+        $$ = new ASTNode_VarParaList($2);
     }
     ;
 
 val_para_list:
     name_list {
-        $$ = new ASTNode_ValParaList();
-        $$->append($1);
+        $$ = new ASTNode_ValParaList($1);
     }
     ;
 
@@ -646,7 +621,8 @@ routine_body:
 
 compound_stmt:
     KW_BEGIN stmt_list KW_END {
-        $$ = $2;
+        $$ = new ASTNode_StmtCompound();
+        $$->append($2);
     }
     ;
 
@@ -678,9 +654,7 @@ non_label_stmt:
         $$ = $1;
     }
     | compound_stmt {
-        //TODO: fix recursive definition
-        $$ = new ASTNode_Stmt_Compound();
-        $$->append($1);
+        $$ = $1;
     }
     | if_stmt {
         $$ = $1;
@@ -704,41 +678,39 @@ non_label_stmt:
 
 assign_stmt:
     NAME OP_ASSIGN expression {
-        $$ = new ASTNode_Stmt_Assign($1);
+        $$ = new ASTNode_StmtAssign($1);
         $$->append($3);
     }
     | NAME OP_LB expression OP_RB OP_ASSIGN expression {
-        //TODO: array
-        $$ = new ASTNode_Stmt_Assign($1);
+        $$ = new ASTNode_StmtAssign($1,$3);
         $$->append($6);
     }
     | NAME OP_DOT NAME OP_ASSIGN expression {
-        //TODO: member
-        $$ = new ASTNode_Stmt_Assign($1);
+        $$ = new ASTNode_StmtAssign($1,$3);
         $$->append($5);
     }
     ;
 
 proc_stmt:
     NAME {
-        $$ = new ASTNode_Stmt_Proc($1);
+        $$ = new ASTNode_StmtProc($1);
     }
     | NAME OP_LP args_list OP_RP {
-        $$ = new ASTNode_Stmt_Proc($1);
+        $$ = new ASTNode_StmtProc($1);
         $$->append($3);
     }
     | sys_proc {
-        $$ = $1;
+        $$ = new ASTNode_StmtProc($1);
     }
     | sys_proc OP_LP expression_list OP_RP {
-        $$ = $1;
+        $$ = new ASTNode_StmtProc($1);
         $$->append($3);
     }
     ;
 
 if_stmt:
     KW_IF expression KW_THEN stmt else_clause {
-        $$ = new ASTNode_Stmt_If();
+        $$ = new ASTNode_StmtIf();
         $$->append($2);
         $$->append($4);
         $$->append($5);
@@ -756,7 +728,7 @@ else_clause:
 
 repeat_stmt:
     KW_REPEAT stmt_list KW_UNTIL expression {
-        $$ = new ASTNode_Stmt_Repeat();
+        $$ = new ASTNode_StmtRepeat();
         $$->append($2);
         $$->append($4);
     }
@@ -764,7 +736,7 @@ repeat_stmt:
 
 while_stmt:
     KW_WHILE expression KW_DO stmt {
-        $$ = new ASTNode_Stmt_While();
+        $$ = new ASTNode_StmtWhile();
         $$->append($2);
         $$->append($4);
     }
@@ -772,10 +744,8 @@ while_stmt:
 
 for_stmt:
     KW_FOR NAME OP_ASSIGN expression direction expression KW_DO stmt {
-        $$ = new ASTNode_Stmt_For($5);
-        auto var = new ASTNode_Stmt_Assign($2);
-        var->append($4);
-        $$->append(var);
+        $$ = new ASTNode_StmtFor($2,$5->get() == "true");
+        $$->append($4);
         $$->append($6);
         $$->append($8);
     }
@@ -783,16 +753,16 @@ for_stmt:
 
 direction:
     KW_TO {
-        $$ = false;
+        $$ = new ASTNode_ConstBoolean(false);
     }
     | KW_DOWNTO {
-        $$ = true;
+        $$ = new ASTNode_ConstBoolean(true);
     }
     ;
 
 case_stmt:
     KW_CASE expression KW_OF case_expr_list KW_END {
-        $$ = new ASTNode_Stmt_Case();
+        $$ = new ASTNode_StmtCase();
         $$->append($2);
         $$->append($4);
     }
@@ -804,26 +774,25 @@ case_expr_list:
         $$->append($2);
     }
     | case_expr {
-        $$ = new ASTNode_Case_Expr_List();
+        $$ = new ASTNode_CaseExprList();
         $$->append($1);
     }
     ;
 
 case_expr:
     const_value OP_COLON stmt OP_SEMI {
-        $$ = new ASTNode_Case_Expr();
-        $$->append($1);
+        $$ = new ASTNode_CaseExpr($1);
         $$->append($3);
     }
     | NAME OP_COLON stmt OP_SEMI {
-        $$ = new ASTNode_Case_Expr($1);
+        $$ = new ASTNode_CaseExpr($1);
         $$->append($3);
     }
     ;
 
 goto_stmt:
     KW_GOTO CONST_INTEGER {
-        $$ = new ASTNode_Stmt_Goto($2);
+        $$ = new ASTNode_StmtGoto($2);
     }
     ;
 
@@ -833,7 +802,7 @@ expression_list:
         $$->append($3);
     }
     | expression {
-        $$ = new ASTNode_Expr_List();
+        $$ = new ASTNode_ExprList();
         $$->append($1);
     }
     ;
@@ -926,7 +895,6 @@ factor:
         $$ = new ASTNode_Operand($1);
     }
     | NAME OP_LP args_list OP_RP {
-        //TODO: FUNCTION
         $$ = new ASTNode_Operand($1);
         $$->append($3);
     }
@@ -958,8 +926,9 @@ factor:
         $$->append($3);
     }
     | NAME OP_DOT NAME {
-        //TODO: member
-        $$ = new ASTNode_Operand($1);
+        $$ = new ASTNode_Operator(".");
+        $$->append(new ASTNode_Operand($1));
+        $$->append(new ASTNode_Operand($3));
     }
     ;
 

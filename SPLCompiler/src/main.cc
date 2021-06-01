@@ -26,7 +26,7 @@ int main(int args, char **argv)
         yyparse();
     }
 
-    ASTHandler::print(ASTHead, 0);
+    ASTHandler::print();
 
     return 0;
 }
