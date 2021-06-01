@@ -772,7 +772,9 @@ class ASTNode_Operand : public ASTNode_Expr
 
 public:
     ASTNode_Operand() {}
+    ASTNode_Operand(std::string name) : name(name) {}
     ASTNode_Operand(ASTNode_Name *pNode) : name(std::move(pNode->name)) { delete pNode; }
+
     void print() override
     {
         YaccLogger.println("Operand " + name);

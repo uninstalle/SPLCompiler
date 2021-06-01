@@ -906,12 +906,11 @@ factor:
         $$->append($3);
     }
     | const_value {
-        $$ = new ASTNode_Operand();
+        $$ = new ASTNode_Operand("const");
         $$->append($1);
     }
     | OP_LP expression OP_RP {
-        $$ = new ASTNode_Operand();
-        $$->append($2);
+        $$ = $2;
     }
     | OP_NOT factor {
         $$ = new ASTNode_Operator("!");
