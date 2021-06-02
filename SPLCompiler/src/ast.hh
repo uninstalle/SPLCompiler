@@ -12,12 +12,11 @@ class CodeGenerator;
 class ASTNode
 {
 public:
-
 	friend ASTHandler;
 	friend CodeGenerator;
 
-	ASTNode* child = nullptr;
-	ASTNode* brother = nullptr;
+	ASTNode *child = nullptr;
+	ASTNode *brother = nullptr;
 
 	enum class ASTNodeType
 	{
@@ -79,10 +78,10 @@ public:
 	};
 
 	ASTNode() = default;
-	ASTNode(const ASTNode& node) = delete;
-	ASTNode(ASTNode&& node) = delete;
+	ASTNode(const ASTNode &node) = delete;
+	ASTNode(ASTNode &&node) = delete;
 
-	void append(ASTNode* node)
+	void append(ASTNode *node)
 	{
 		if (!node)
 			return;
@@ -126,7 +125,6 @@ public:
 class ASTNode_Name : public ASTNode
 {
 public:
-
 	std::string name;
 
 	ASTNode_Name(std::string name) : name(std::move(name)) {}
@@ -145,10 +143,9 @@ public:
 class ASTNode_Program : public ASTNode
 {
 public:
-
 	std::string programName;
 
-	ASTNode_Program(ASTNode_Name* pNode) : programName(std::move(pNode->name)) { delete pNode; }
+	ASTNode_Program(ASTNode_Name *pNode) : programName(std::move(pNode->name)) { delete pNode; }
 
 	ASTNodeType getType() override
 	{
@@ -164,7 +161,6 @@ public:
 class ASTNode_Routine : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::Routine;
@@ -179,6 +175,8 @@ public:
 class ASTNode_SubRoutine : public ASTNode
 {
 public:
+	llvm::Value *codeGen();
+
 	void print() override
 	{
 		YaccLogger.println("SubRoutine");
@@ -188,7 +186,6 @@ public:
 class ASTNode_RoutineHead : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::RoutineHead;
@@ -208,16 +205,16 @@ protected:
 		const int integer;
 		const double real;
 		const char character;
-		const char* string;
+		const char *string;
 		const bool boolean;
 	} value;
 
 public:
-	ASTNode_Const(const int val) : value({ .integer = val }) {}
-	ASTNode_Const(const double val) : value({ .real = val }) {}
-	ASTNode_Const(const char val) : value({ .character = val }) {}
-	ASTNode_Const(const char* val) : value({ .string = val }) {}
-	ASTNode_Const(const bool val) : value({ .boolean = val }) {}
+	ASTNode_Const(const int val) : value({.integer = val}) {}
+	ASTNode_Const(const double val) : value({.real = val}) {}
+	ASTNode_Const(const char val) : value({.character = val}) {}
+	ASTNode_Const(const char *val) : value({.string = val}) {}
+	ASTNode_Const(const bool val) : value({.boolean = val}) {}
 
 	virtual std::string get() = 0;
 
@@ -226,7 +223,7 @@ public:
 		return ASTNodeType::Const;
 	}
 
-	virtual llvm::Value* codeGen() = 0;
+	virtual llvm::Value *codeGen() = 0;
 
 	void print() override
 	{
@@ -236,7 +233,7 @@ public:
 
 class ASTNode_ConstInteger : public ASTNode_Const
 {
-	const int& value = ASTNode_Const::value.integer;
+	const int &value = ASTNode_Const::value.integer;
 
 public:
 	ASTNode_ConstInteger(const int val) : ASTNode_Const(val) {}
@@ -251,7 +248,7 @@ public:
 		return ASTNodeType::ConstInteger;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -261,7 +258,7 @@ public:
 
 class ASTNode_ConstReal : public ASTNode_Const
 {
-	const double& value = ASTNode_Const::value.real;
+	const double &value = ASTNode_Const::value.real;
 
 public:
 	ASTNode_ConstReal(const double val) : ASTNode_Const(val) {}
@@ -276,7 +273,7 @@ public:
 		return ASTNodeType::ConstReal;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -286,7 +283,7 @@ public:
 
 class ASTNode_ConstCharacter : public ASTNode_Const
 {
-	const char& value = ASTNode_Const::value.character;
+	const char &value = ASTNode_Const::value.character;
 
 public:
 	ASTNode_ConstCharacter(const char val) : ASTNode_Const(val) {}
@@ -301,7 +298,7 @@ public:
 		return ASTNodeType::ConstCharacter;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -311,10 +308,10 @@ public:
 
 class ASTNode_ConstString : public ASTNode_Const
 {
-	const char*& value = ASTNode_Const::value.string;
+	const char *&value = ASTNode_Const::value.string;
 
 public:
-	ASTNode_ConstString(const char* val) : ASTNode_Const(val) {}
+	ASTNode_ConstString(const char *val) : ASTNode_Const(val) {}
 
 	std::string get() override
 	{
@@ -326,7 +323,7 @@ public:
 		return ASTNodeType::ConstString;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -336,7 +333,7 @@ public:
 
 class ASTNode_ConstBoolean : public ASTNode_Const
 {
-	const bool& value = ASTNode_Const::value.boolean;
+	const bool &value = ASTNode_Const::value.boolean;
 
 public:
 	ASTNode_ConstBoolean(const bool val) : ASTNode_Const(val) {}
@@ -351,7 +348,7 @@ public:
 		return ASTNodeType::ConstBoolean;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -363,9 +360,9 @@ class ASTNode_ConstExpr : public ASTNode
 {
 public:
 	std::string constName;
-	ASTNode_Const* value;
+	ASTNode_Const *value;
 
-	ASTNode_ConstExpr(ASTNode_Name* pNode, ASTNode_Const* value) : constName(std::move(pNode->name)), value(value) { delete pNode; }
+	ASTNode_ConstExpr(ASTNode_Name *pNode, ASTNode_Const *value) : constName(std::move(pNode->name)), value(value) { delete pNode; }
 
 	ASTNodeType getType() override
 	{
@@ -386,7 +383,6 @@ public:
 class ASTNode_ConstExprList : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::ConstExprList;
@@ -401,7 +397,6 @@ public:
 class ASTNode_Type : public ASTNode
 {
 public:
-
 	virtual std::string get() = 0;
 
 	ASTNodeType getType() override
@@ -409,7 +404,7 @@ public:
 		return ASTNodeType::Type;
 	}
 
-	virtual llvm::Type* codeGen() = 0;
+	virtual llvm::Type *codeGen() = 0;
 
 	void print() override
 	{
@@ -420,7 +415,6 @@ public:
 class ASTNode_SimpleType : public ASTNode_Type
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::SimpleType;
@@ -437,9 +431,8 @@ class ASTNode_SimpleTypePlain : public ASTNode_SimpleType
 	std::string typeName;
 
 public:
-
 	ASTNode_SimpleTypePlain(std::string type) : typeName(std::move(type)) {}
-	ASTNode_SimpleTypePlain(ASTNode_Name* pNode) : typeName(std::move(pNode->name)) { delete pNode; }
+	ASTNode_SimpleTypePlain(ASTNode_Name *pNode) : typeName(std::move(pNode->name)) { delete pNode; }
 
 	std::string get() override
 	{
@@ -451,7 +444,7 @@ public:
 		return ASTNodeType::SimpleTypePlain;
 	}
 
-	llvm::Type* codeGen() override;
+	llvm::Type *codeGen() override;
 
 	void print() override
 	{
@@ -465,14 +458,14 @@ public:
 	std::vector<std::string> name_list;
 
 	ASTNode_NameList() = default;
-	ASTNode_NameList(ASTNode_NameList&& node) noexcept : name_list(std::move(node.name_list)) {}
+	ASTNode_NameList(ASTNode_NameList &&node) noexcept : name_list(std::move(node.name_list)) {}
 
-	void insert(const std::string& name)
+	void insert(const std::string &name)
 	{
 		name_list.push_back(name);
 	}
 
-	void insert(ASTNode_Name* pNode)
+	void insert(ASTNode_Name *pNode)
 	{
 		name_list.push_back(std::move(pNode->name));
 		delete pNode;
@@ -482,7 +475,7 @@ public:
 	{
 		std::stringstream ss;
 		ss << "(";
-		for (auto& i : name_list)
+		for (auto &i : name_list)
 			ss << i << ",";
 		ss << ")";
 		return ss.str();
@@ -496,7 +489,7 @@ public:
 	void print() override
 	{
 		YaccLogger.print("NameList (");
-		for (auto& i : name_list)
+		for (auto &i : name_list)
 			YaccLogger.print(i).print(" ");
 		YaccLogger.println(")");
 	}
@@ -504,11 +497,10 @@ public:
 
 class ASTNode_SimpleTypeEnumerate : public ASTNode_SimpleType
 {
-	ASTNode_NameList* list;
+	ASTNode_NameList *list;
 
 public:
-
-	ASTNode_SimpleTypeEnumerate(ASTNode_NameList* list) : list(list) {}
+	ASTNode_SimpleTypeEnumerate(ASTNode_NameList *list) : list(list) {}
 
 	std::string get() override
 	{
@@ -525,7 +517,7 @@ public:
 		YaccLogger.println("SimpleTypeEnum " + list->get());
 	}
 
-	llvm::Type* codeGen() override;
+	llvm::Type *codeGen() override;
 
 	~ASTNode_SimpleTypeEnumerate() override
 	{
@@ -538,14 +530,13 @@ class ASTNode_SimpleTypeSubrange : public ASTNode_SimpleType
 	std::string begin, end;
 
 public:
-
-	ASTNode_SimpleTypeSubrange(ASTNode_Const* begin, ASTNode_Const* end) : begin(begin->get()), end(end->get())
+	ASTNode_SimpleTypeSubrange(ASTNode_Const *begin, ASTNode_Const *end) : begin(begin->get()), end(end->get())
 	{
 		delete begin;
 		delete end;
 	}
 
-	ASTNode_SimpleTypeSubrange(ASTNode_Name* begin, ASTNode_Name* end) : begin(std::move(begin->name)), end(std::move(end->name))
+	ASTNode_SimpleTypeSubrange(ASTNode_Name *begin, ASTNode_Name *end) : begin(std::move(begin->name)), end(std::move(end->name))
 	{
 		delete begin;
 		delete end;
@@ -561,7 +552,7 @@ public:
 		return ASTNodeType::SimpleTypeSubrange;
 	}
 
-	llvm::Type* codeGen() override;
+	llvm::Type *codeGen() override;
 
 	void print() override
 	{
@@ -571,12 +562,11 @@ public:
 
 class ASTNode_ArrayType : public ASTNode_Type
 {
-	ASTNode_SimpleType* indexType;
-	ASTNode_Type* elementType;
+	ASTNode_SimpleType *indexType;
+	ASTNode_Type *elementType;
 
 public:
-
-	ASTNode_ArrayType(ASTNode_SimpleType* indexType, ASTNode_Type* elementType) : indexType(indexType), elementType(elementType) {}
+	ASTNode_ArrayType(ASTNode_SimpleType *indexType, ASTNode_Type *elementType) : indexType(indexType), elementType(elementType) {}
 
 	std::string get() override
 	{
@@ -588,7 +578,7 @@ public:
 		return ASTNodeType::ArrayType;
 	}
 
-	llvm::Type* codeGen() override;
+	llvm::Type *codeGen() override;
 
 	void print() override
 	{
@@ -605,7 +595,6 @@ public:
 class ASTNode_RecordType : public ASTNode_Type
 {
 public:
-
 	std::string get() override
 	{
 		//TODO: better string representation of record
@@ -617,7 +606,7 @@ public:
 		return ASTNodeType::RecordType;
 	}
 
-	llvm::Type* codeGen() override;
+	llvm::Type *codeGen() override;
 
 	void print() override
 	{
@@ -628,11 +617,10 @@ public:
 class ASTNode_TypeDecl : public ASTNode
 {
 public:
-
 	std::string defName;
-	ASTNode_Type* type;
+	ASTNode_Type *type;
 
-	ASTNode_TypeDecl(ASTNode_Name* pNode, ASTNode_Type* type) : defName(std::move(pNode->name)), type(type) { delete pNode; }
+	ASTNode_TypeDecl(ASTNode_Name *pNode, ASTNode_Type *type) : defName(std::move(pNode->name)), type(type) { delete pNode; }
 
 	ASTNodeType getType() override
 	{
@@ -653,7 +641,6 @@ public:
 class ASTNode_TypeDeclList : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::TypeDeclList;
@@ -667,12 +654,11 @@ public:
 
 class ASTNode_FieldDecl : public ASTNode
 {
-	ASTNode_NameList* list;
-	ASTNode_Type* type;
+	ASTNode_NameList *list;
+	ASTNode_Type *type;
 
 public:
-
-	ASTNode_FieldDecl(ASTNode_NameList* list, ASTNode_Type* type) : list(list), type(type) {}
+	ASTNode_FieldDecl(ASTNode_NameList *list, ASTNode_Type *type) : list(list), type(type) {}
 
 	std::string get()
 	{
@@ -698,7 +684,6 @@ public:
 class ASTNode_FieldDeclList : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::FieldDeclList;
@@ -713,7 +698,6 @@ public:
 class ASTNode_VarDeclList : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::VarDeclList;
@@ -728,11 +712,10 @@ public:
 class ASTNode_VarDecl : public ASTNode
 {
 public:
+	ASTNode_NameList *list;
+	ASTNode_Type *type;
 
-	ASTNode_NameList* list;
-	ASTNode_Type* type;
-
-	ASTNode_VarDecl(ASTNode_NameList* list, ASTNode_Type* type) : list(list), type(type) {}
+	ASTNode_VarDecl(ASTNode_NameList *list, ASTNode_Type *type) : list(list), type(type) {}
 
 	std::string get()
 	{
@@ -759,7 +742,6 @@ public:
 class ASTNode_RoutinePart : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::RoutinePart;
@@ -774,11 +756,12 @@ public:
 class ASTNode_FunctionDecl : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::FunctionDecl;
 	}
+
+	llvm::Function *codeGen();
 
 	void print() override
 	{
@@ -788,16 +771,18 @@ public:
 
 class ASTNode_FunctionHead : public ASTNode
 {
+public:
 	std::string functionName;
 
-public:
-
-	ASTNode_FunctionHead(ASTNode_Name* pNode) : functionName(std::move(pNode->name)) { delete pNode; }
+	ASTNode_FunctionHead(ASTNode_Name *pNode) : functionName(std::move(pNode->name)) { delete pNode; }
 
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::FunctionHead;
 	}
+
+	// return function declaration
+	llvm::Function *codeGen();
 
 	void print() override
 	{
@@ -808,11 +793,12 @@ public:
 class ASTNode_ProcedureDecl : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::ProcedureDecl;
 	}
+
+	llvm::Function *codeGen();
 
 	void print() override
 	{
@@ -822,16 +808,17 @@ public:
 
 class ASTNode_ProcedureHead : public ASTNode
 {
-	std::string procedureName;
-
 public:
-
-	ASTNode_ProcedureHead(ASTNode_Name* pNode) : procedureName(std::move(pNode->name)) { delete pNode; }
+	std::string procedureName;
+	ASTNode_ProcedureHead(ASTNode_Name *pNode) : procedureName(std::move(pNode->name)) { delete pNode; }
 
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::ProcedureHead;
 	}
+
+	// return procedure declaration
+	llvm::Function *codeGen();
 
 	void print() override
 	{
@@ -842,7 +829,6 @@ public:
 class ASTNode_ParaDeclList : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::ParaDeclList;
@@ -856,12 +842,11 @@ public:
 
 class ASTNode_ParaTypeList : public ASTNode
 {
-	ASTNode_NameList* paraList;
-	ASTNode_SimpleType* type;
-
 public:
+	ASTNode_NameList *paraList;
+	ASTNode_SimpleType *type;
 
-	ASTNode_ParaTypeList(ASTNode_NameList* paraList, ASTNode_SimpleType* type) : paraList(paraList), type(type) {}
+	ASTNode_ParaTypeList(ASTNode_NameList *paraList, ASTNode_SimpleType *type) : paraList(paraList), type(type) {}
 
 	ASTNodeType getType() override
 	{
@@ -883,8 +868,7 @@ public:
 class ASTNode_VarParaList : public ASTNode_NameList
 {
 public:
-
-	ASTNode_VarParaList(ASTNode_NameList* pNode) : ASTNode_NameList(std::move(*pNode))
+	ASTNode_VarParaList(ASTNode_NameList *pNode) : ASTNode_NameList(std::move(*pNode))
 	{
 		delete pNode;
 	}
@@ -908,8 +892,7 @@ public:
 class ASTNode_ValParaList : public ASTNode_NameList
 {
 public:
-
-	ASTNode_ValParaList(ASTNode_NameList* pNode) : ASTNode_NameList(std::move(*pNode))
+	ASTNode_ValParaList(ASTNode_NameList *pNode) : ASTNode_NameList(std::move(*pNode))
 	{
 		delete pNode;
 	}
@@ -933,7 +916,6 @@ public:
 class ASTNode_StmtList : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::StmtList;
@@ -952,7 +934,6 @@ protected:
 	int label;
 
 public:
-
 	ASTNode_Stmt() : hasLabel(false), label(0) {}
 
 	ASTNodeType getType() override
@@ -966,7 +947,7 @@ public:
 		this->label = label;
 	}
 
-	void setLabel(ASTNode_Const* pNode)
+	void setLabel(ASTNode_Const *pNode)
 	{
 		hasLabel = true;
 		this->label = std::stoi(pNode->get());
@@ -982,14 +963,12 @@ public:
 class ASTNode_Expr : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::Expr;
 	}
 
-	virtual llvm::Value* codeGen() = 0;
-
+	virtual llvm::Value *codeGen() = 0;
 
 	void print() override
 	{
@@ -1002,16 +981,15 @@ class ASTNode_StmtAssign : public ASTNode_Stmt
 	std::string lvalueName;
 
 public:
+	ASTNode_StmtAssign(ASTNode_Name *pNode) : lvalueName(std::move(pNode->name)) { delete pNode; }
 
-	ASTNode_StmtAssign(ASTNode_Name* pNode) : lvalueName(std::move(pNode->name)) { delete pNode; }
-
-	ASTNode_StmtAssign(ASTNode_Name* pNode, ASTNode_Expr* expr) : lvalueName(std::move(pNode->name))
+	ASTNode_StmtAssign(ASTNode_Name *pNode, ASTNode_Expr *expr) : lvalueName(std::move(pNode->name))
 	{
 		lvalueName += "[]";
 		delete pNode;
 	}
 
-	ASTNode_StmtAssign(ASTNode_Name* pNode, ASTNode_Name* member) : lvalueName(std::move(pNode->name))
+	ASTNode_StmtAssign(ASTNode_Name *pNode, ASTNode_Name *member) : lvalueName(std::move(pNode->name))
 	{
 		lvalueName += "." + std::move(member->name);
 		delete pNode;
@@ -1034,8 +1012,7 @@ class ASTNode_StmtProc : public ASTNode_Stmt
 	std::string procName;
 
 public:
-
-	ASTNode_StmtProc(ASTNode_Name* pNode) : procName(std::move(pNode->name)) {}
+	ASTNode_StmtProc(ASTNode_Name *pNode) : procName(std::move(pNode->name)) {}
 
 	ASTNodeType getType() override
 	{
@@ -1051,7 +1028,6 @@ public:
 class ASTNode_StmtCompound : public ASTNode_Stmt
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::StmtCompound;
@@ -1066,7 +1042,6 @@ public:
 class ASTNode_StmtIf : public ASTNode_Stmt
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::StmtIf;
@@ -1081,7 +1056,6 @@ public:
 class ASTNode_StmtRepeat : public ASTNode_Stmt
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::StmtRepeat;
@@ -1096,7 +1070,6 @@ public:
 class ASTNode_StmtWhile : public ASTNode_Stmt
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::StmtWhile;
@@ -1114,8 +1087,7 @@ class ASTNode_StmtFor : public ASTNode_Stmt
 	bool isPositive;
 
 public:
-
-	ASTNode_StmtFor(ASTNode_Name* pNode, bool dir) : varName(std::move(pNode->name)), isPositive(dir) { delete pNode; }
+	ASTNode_StmtFor(ASTNode_Name *pNode, bool dir) : varName(std::move(pNode->name)), isPositive(dir) { delete pNode; }
 
 	ASTNodeType getType() override
 	{
@@ -1131,7 +1103,6 @@ public:
 class ASTNode_StmtCase : public ASTNode_Stmt
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::StmtCase;
@@ -1148,8 +1119,7 @@ class ASTNode_StmtGoto : public ASTNode_Stmt
 	std::string gotoLabel;
 
 public:
-
-	ASTNode_StmtGoto(ASTNode_Const* pNode) : gotoLabel(pNode->get()) { delete pNode; }
+	ASTNode_StmtGoto(ASTNode_Const *pNode) : gotoLabel(pNode->get()) { delete pNode; }
 
 	ASTNodeType getType() override
 	{
@@ -1167,10 +1137,9 @@ class ASTNode_CaseExpr : public ASTNode
 	std::string caseVar;
 
 public:
+	ASTNode_CaseExpr(ASTNode_Const *pNode) : caseVar(pNode->get()) { delete pNode; }
 
-	ASTNode_CaseExpr(ASTNode_Const* pNode) : caseVar(pNode->get()) { delete pNode; }
-
-	ASTNode_CaseExpr(ASTNode_Name* pNode) : caseVar(std::move(pNode->name)) { delete pNode; }
+	ASTNode_CaseExpr(ASTNode_Name *pNode) : caseVar(std::move(pNode->name)) { delete pNode; }
 
 	ASTNodeType getType() override
 	{
@@ -1186,7 +1155,6 @@ public:
 class ASTNode_CaseExprList : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::CaseExprList;
@@ -1201,7 +1169,6 @@ public:
 class ASTNode_ExprList : public ASTNode
 {
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::ExprList;
@@ -1240,21 +1207,19 @@ public:
 	};
 
 private:
-
 	static const std::string OperatorString[15];
 
 	OPERATOR op;
 
-	static const std::string& stringOf(OPERATOR op)
+	static const std::string &stringOf(OPERATOR op)
 	{
 		return OperatorString[static_cast<int>(op)];
 	}
 
 public:
-
 	ASTNode_Operator(OPERATOR op) : op(op) {}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	ASTNodeType getType() override
 	{
@@ -1272,15 +1237,14 @@ class ASTNode_Operand : public ASTNode_Expr
 	std::string name;
 
 public:
-
 	ASTNode_Operand() = default;
 
 	ASTNode_Operand(std::string name) : name(std::move(name)) {}
 
-	ASTNode_Operand(ASTNode_Name* pNode) : name(std::move(pNode->name)) { delete pNode; }
+	ASTNode_Operand(ASTNode_Name *pNode) : name(std::move(pNode->name)) { delete pNode; }
 
-	llvm::Value* codeGen() override;
-	
+	llvm::Value *codeGen() override;
+
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::Operand;
@@ -1295,6 +1259,7 @@ public:
 class ASTNode_ArgList : public ASTNode
 {
 public:
+	int count = 0;
 
 	ASTNodeType getType() override
 	{
@@ -1303,19 +1268,19 @@ public:
 
 	void print() override
 	{
-		YaccLogger.println("ArgList");
+		YaccLogger.println("ArgList " + std::to_string(count));
 	}
 };
 
-extern ASTNode* ASTHead;
+extern ASTNode *ASTHead;
 
 class ASTHandler
 {
-	static void recursivePrint(ASTNode* head, int depth);
-	static void scanConstPart(ASTNode* part);
-	static void scanTypePart(ASTNode* part);
-	static void scanVarPart(ASTNode* part);
-	static void scanRoutinePart(ASTNode* part);
+	static void recursivePrint(ASTNode *head, int depth);
+	static void scanConstPart(ASTNode *part);
+	static void scanTypePart(ASTNode *part);
+	static void scanVarPart(ASTNode *part);
+	static void scanRoutinePart(ASTNode *part);
 
 public:
 	ASTHandler() = delete;

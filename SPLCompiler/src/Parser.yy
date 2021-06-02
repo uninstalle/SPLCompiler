@@ -937,10 +937,12 @@ args_list:
     args_list OP_COMMA expression {
         $$ = $1;
         $$->append($3);
+        $$->count++;
     }
     | expression {
         $$ = new ASTNode_ArgList();
         $$->append($1);
+        $$->count++;
     }
     ;
 
