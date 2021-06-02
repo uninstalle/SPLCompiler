@@ -1,5 +1,6 @@
 #pragma once
 #include "log.hh"
+#include <llvm/IR/BasicBlock.h>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -10,44 +11,64 @@ class CodeGenerator;
 
 class ASTNode
 {
+public:
+
     friend ASTHandler;
     friend CodeGenerator;
 
-    ASTNode *son = nullptr;
-    ASTNode *brother = nullptr;
-
-public:
+    ASTNode* child = nullptr;
+    ASTNode* brother = nullptr;
+	
     ASTNode() = default;
+    ASTNode(const ASTNode &node) = delete;
+    ASTNode(ASTNode &&node) = delete;
+	
     void append(ASTNode *node)
     {
         if (!node)
             return;
-        if (!son)
-            son = node;
+        if (!child)
+            child = node;
         else
         {
-            auto current = son;
+            auto current = child;
             while (current->brother)
                 current = current->brother;
             current->brother = node;
         }
     }
+
+    virtual llvm::Value *codeGen() { return nullptr; }
+
     virtual void print()
     {
         YaccLogger.print("BaseNode SHOULD NOT OCCURRED");
     }
-    virtual ~ASTNode() 
+	
+    virtual ~ASTNode()
     {
-        //TODO: cascade delete nodes
+        if (child)
+        {
+            auto current = child;
+            while (current->brother)
+            {
+                auto prev = current;
+                current = current->brother;
+                delete prev;
+            }
+            delete current;
+        }
     }
 };
 
 class ASTNode_Name : public ASTNode
 {
 public:
+	
     std::string name;
 
     ASTNode_Name(std::string name) : name(std::move(name)) {}
+	
     void print() override
     {
         YaccLogger.print("Name " + name);
@@ -56,11 +77,12 @@ public:
 
 class ASTNode_Program : public ASTNode
 {
-
-    std::string programName;
-
 public:
+	
+    std::string programName;
+	
     ASTNode_Program(ASTNode_Name *pNode) : programName(std::move(pNode->name)) { delete pNode; }
+	
     void print() override
     {
         YaccLogger.println("Program " + programName);
@@ -70,6 +92,7 @@ public:
 class ASTNode_Routine : public ASTNode
 {
 public:
+	
     void print() override
     {
         YaccLogger.println("Routine");
@@ -79,6 +102,7 @@ public:
 class ASTNode_RoutineHead : public ASTNode
 {
 public:
+	
     void print() override
     {
         YaccLogger.println("RoutineHead");
@@ -103,10 +127,12 @@ public:
     ASTNode_Const(const char val) : value({.character = val}) {}
     ASTNode_Const(const char *val) : value({.string = val}) {}
     ASTNode_Const(const bool val) : value({.boolean = val}) {}
+	
     virtual std::string get() = 0;
+	
     void print() override
     {
-        YaccLogger.println("Const");
+        YaccLogger.println("Const SHOULD NOT OCCURRED");
     }
 };
 
@@ -116,10 +142,14 @@ class ASTNode_ConstInteger : public ASTNode_Const
 
 public:
     ASTNode_ConstInteger(const int val) : ASTNode_Const(val) {}
+	
     std::string get() override
     {
         return std::to_string(value);
     }
+
+    llvm::Value *codeGen() override;
+
     void print() override
     {
         YaccLogger.println("ConstInteger " + std::to_string(value));
@@ -132,10 +162,14 @@ class ASTNode_ConstReal : public ASTNode_Const
 
 public:
     ASTNode_ConstReal(const double val) : ASTNode_Const(val) {}
+	
     std::string get() override
     {
         return std::to_string(value);
     }
+
+    llvm::Value *codeGen() override;
+
     void print() override
     {
         YaccLogger.println("ConstReal " + std::to_string(value));
@@ -148,10 +182,14 @@ class ASTNode_ConstCharacter : public ASTNode_Const
 
 public:
     ASTNode_ConstCharacter(const char val) : ASTNode_Const(val) {}
+	
     std::string get() override
     {
         return std::to_string(value);
     }
+
+    llvm::Value *codeGen() override;
+
     void print() override
     {
         YaccLogger.println("ConstCharacter " + std::to_string(value));
@@ -164,10 +202,14 @@ class ASTNode_ConstString : public ASTNode_Const
 
 public:
     ASTNode_ConstString(const char *val) : ASTNode_Const(val) {}
+	
     std::string get() override
     {
         return value;
     }
+
+    llvm::Value *codeGen() override;
+
     void print() override
     {
         YaccLogger.print("ConstString ").println(value);
@@ -180,10 +222,14 @@ class ASTNode_ConstBoolean : public ASTNode_Const
 
 public:
     ASTNode_ConstBoolean(const bool val) : ASTNode_Const(val) {}
+	
     std::string get() override
     {
         return value ? "true" : "false";
     }
+
+    llvm::Value *codeGen() override;
+
     void print() override
     {
         YaccLogger.print("ConstBoolean " + std::to_string(value));
@@ -254,8 +300,11 @@ public:
 
 class ASTNode_NameList : public ASTNode
 {
-public:
     std::vector<std::string> name_list;
+
+public:
+    ASTNode_NameList() = default;
+    ASTNode_NameList(ASTNode_NameList &&node) noexcept : name_list(std::move(node.name_list)) {}
     void insert(const std::string &name)
     {
         name_list.push_back(name);
@@ -745,13 +794,48 @@ public:
 
 class ASTNode_Operator : public ASTNode_Expr
 {
-    std::string op;
+public:
+    enum class OPERATOR
+    {
+        GE,
+        GT,
+        LE,
+        LT,
+        EQUAL,
+        UNEQUAL,
+    	
+        PLUS,
+        MINUS,
+        MUL,
+        DIV,
+        MOD,
+        UMINUS,
+    	
+        AND,
+        OR,
+        NOT,
+    	
+        DOT
+    };
+
+private:
+    static const std::string OperatorString[15];
+
+    OPERATOR op;
+
+	static const std::string& stringOf(OPERATOR op)
+	{
+        return OperatorString[static_cast<int>(op)];
+	}
 
 public:
-    ASTNode_Operator(std::string op) : op(op) {}
+    ASTNode_Operator(OPERATOR op) : op(op) {}
+
+    llvm::Value *codeGen() override;
+
     void print() override
     {
-        YaccLogger.println("Operator " + op);
+        YaccLogger.println("Operator " + stringOf(op));
     }
 };
 
@@ -761,7 +845,7 @@ class ASTNode_Operand : public ASTNode_Expr
 
 public:
     ASTNode_Operand() {}
-    ASTNode_Operand(std::string name) : name(name) {}
+    ASTNode_Operand(std::string name) : name(std::move(name)) {}
     ASTNode_Operand(ASTNode_Name *pNode) : name(std::move(pNode->name)) { delete pNode; }
 
     void print() override
@@ -789,8 +873,8 @@ class ASTHandler
         std::string prefix(depth, ' ');
         YaccLogger.print(prefix);
         current->print();
-        if (current->son)
-            current = current->son;
+        if (current->child)
+            current = current->child;
         else
             return;
         do

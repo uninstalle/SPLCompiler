@@ -43,4 +43,4 @@ public:
 
 extern Logger LexLogger;
 extern Logger YaccLogger;
-extern Logger codeWriter;
+extern Logger CodeGenLogger;

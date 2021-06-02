@@ -810,32 +810,32 @@ expression_list:
 
 expression:
     expression OP_GE expr {
-        $$ = new ASTNode_Operator(">=");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::GE);
         $$->append($1);
         $$->append($3);
     }
     | expression OP_GT expr {
-        $$ = new ASTNode_Operator(">");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::GT);
         $$->append($1);
         $$->append($3);
     }
     | expression OP_LE expr {
-        $$ = new ASTNode_Operator("<=");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::LE);
         $$->append($1);
         $$->append($3);
     }
     | expression OP_LT expr {
-        $$ = new ASTNode_Operator("<");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::LT);
         $$->append($1);
         $$->append($3);
     }
     | expression OP_EQUAL expr {
-        $$ = new ASTNode_Operator("=");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::EQUAL);
         $$->append($1);
         $$->append($3);
     }
     | expression OP_UNEQUAL expr {
-        $$ = new ASTNode_Operator("<>");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::UNEQUAL);
         $$->append($1);
         $$->append($3);
     }
@@ -846,17 +846,17 @@ expression:
 
 expr:
     expr OP_PLUS term {
-        $$ = new ASTNode_Operator("+");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::PLUS);
         $$->append($1);
         $$->append($3);
     }
     | expr OP_MINUS term {
-        $$ = new ASTNode_Operator("-");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::MINUS);
         $$->append($1);
         $$->append($3);
     }
     | expr KW_OR term {
-        $$ = new ASTNode_Operator("|");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::OR);
         $$->append($1);
         $$->append($3);
     }
@@ -867,22 +867,22 @@ expr:
 
 term:
     term OP_MUL factor {
-        $$ = new ASTNode_Operator("*");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::MUL);
         $$->append($1);
         $$->append($3);
     }
     | term OP_DIV factor {
-        $$ = new ASTNode_Operator("/");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::DIV);
         $$->append($1);
         $$->append($3);
     }
     | term OP_MOD factor {
-        $$ = new ASTNode_Operator("%");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::MOD);
         $$->append($1);
         $$->append($3);
     }
     | term KW_AND factor {
-        $$ = new ASTNode_Operator("&");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::AND);
         $$->append($1);
         $$->append($3);
     }
@@ -914,11 +914,11 @@ factor:
         $$ = $2;
     }
     | OP_NOT factor {
-        $$ = new ASTNode_Operator("!");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::NOT);
         $$->append($2);
     }
     | OP_MINUS factor {
-        $$ = new ASTNode_Operator("--");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::UMINUS);
         $$->append($2);
     }
     | NAME OP_LB expression OP_RB {
@@ -926,7 +926,7 @@ factor:
         $$->append($3);
     }
     | NAME OP_DOT NAME {
-        $$ = new ASTNode_Operator(".");
+        $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::DOT);
         $$->append(new ASTNode_Operand($1));
         $$->append(new ASTNode_Operand($3));
     }
