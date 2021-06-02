@@ -12,6 +12,7 @@
     class ASTNode_Name* node_name;
     class ASTNode_Program* node_program;
     class ASTNode_Routine* node_routine;
+    class ASTNode_SubRoutine* node_sub_routine;
     class ASTNode_RoutineHead* node_routine_head;
 
     class ASTNode_Const* node_const;
@@ -149,7 +150,7 @@ OP_SEMI
 %type <node_program> program
 %type <node_name> program_head
 %type <node_routine> routine
-%type <node_routine> sub_routine
+%type <node_sub_routine> sub_routine
 %type <node_routine_head> routine_head
 
 %type <node_name> sys_funct
@@ -324,7 +325,7 @@ routine:
 
 sub_routine:
     routine_head routine_body {
-        $$ = new ASTNode_Routine();
+        $$ = new ASTNode_SubRoutine();
         $$->append($1);
         $$->append($2);
     }
