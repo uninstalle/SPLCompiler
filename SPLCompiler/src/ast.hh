@@ -5,12 +5,13 @@
 #include <string>
 #include <vector>
 
-class ASTNode;
 class ASTHandler;
+class CodeGenerator;
 
 class ASTNode
 {
     friend ASTHandler;
+    friend CodeGenerator;
 
     ASTNode *son = nullptr;
     ASTNode *brother = nullptr;
@@ -33,9 +34,12 @@ public:
     }
     virtual void print()
     {
-        YaccLogger.print("BaseNode SHOULD NOT OCCURED");
+        YaccLogger.print("BaseNode SHOULD NOT OCCURRED");
     }
-    virtual ~ASTNode() = default;
+    virtual ~ASTNode() 
+    {
+        //TODO: cascade delete nodes
+    }
 };
 
 class ASTNode_Name : public ASTNode
@@ -43,8 +47,8 @@ class ASTNode_Name : public ASTNode
 public:
     std::string name;
 
-    ASTNode_Name(std::string name) : name(name) {}
-    virtual void print()
+    ASTNode_Name(std::string name) : name(std::move(name)) {}
+    void print() override
     {
         YaccLogger.print("Name " + name);
     }
@@ -197,7 +201,7 @@ public:
     {
         YaccLogger.print("ConstExpr " + constName + " ").println(value->get());
     }
-    ~ASTNode_ConstExpr()
+    ~ASTNode_ConstExpr() override
     {
         delete value;
     }
@@ -236,7 +240,7 @@ class ASTNode_SimpleTypePlain : public ASTNode_SimpleType
     std::string typeName;
 
 public:
-    ASTNode_SimpleTypePlain(std::string type) : typeName(type) {}
+    ASTNode_SimpleTypePlain(std::string type) : typeName(std::move(type)) {}
     ASTNode_SimpleTypePlain(ASTNode_Name *pNode) : typeName(std::move(pNode->name)) { delete pNode; }
     std::string get() override
     {
@@ -244,7 +248,7 @@ public:
     }
     void print() override
     {
-        YaccLogger.println("SympleTypePlain " + typeName);
+        YaccLogger.println("SimpleTypePlain " + typeName);
     }
 };
 
@@ -261,7 +265,7 @@ public:
         name_list.push_back(std::move(pNode->name));
         delete pNode;
     }
-    std::string get()
+    virtual std::string get()
     {
         std::stringstream ss;
         ss << "(";
@@ -293,7 +297,7 @@ public:
     {
         YaccLogger.println("SimpleTypeEnum " + list->get());
     }
-    ~ASTNode_SimpleTypeEnumerate()
+    ~ASTNode_SimpleTypeEnumerate() override
     {
         delete list;
     }
@@ -304,7 +308,7 @@ class ASTNode_SimpleTypeSubrange : public ASTNode_SimpleType
     std::string begin, end;
 
 public:
-    ASTNode_SimpleTypeSubrange(ASTNode_Const *begin, ASTNode_Const *end) : begin(std::move(begin->get())), end(std::move(end->get()))
+    ASTNode_SimpleTypeSubrange(ASTNode_Const *begin, ASTNode_Const *end) : begin(begin->get()), end(end->get())
     {
         delete begin;
         delete end;
@@ -320,7 +324,7 @@ public:
     }
     void print() override
     {
-        YaccLogger.println("SympleTypeSubrange " + begin + "..." + end);
+        YaccLogger.println("SimpleTypeSubrange " + begin + "..." + end);
     }
 };
 
@@ -339,7 +343,7 @@ public:
     {
         YaccLogger.println("ArrayType [" + indexType->get() + "] of " + elementType->get());
     }
-    ~ASTNode_ArrayType()
+    ~ASTNode_ArrayType() override
     {
         delete indexType;
         delete elementType;
@@ -371,7 +375,7 @@ public:
     {
         YaccLogger.println("TypeDecl " + defName + " " + type->get());
     }
-    ~ASTNode_TypeDecl()
+    ~ASTNode_TypeDecl() override
     {
         delete type;
     }
@@ -401,7 +405,7 @@ public:
     {
         YaccLogger.println("FieldDecl " + list->get() + " " + type->get());
     }
-    ~ASTNode_FieldDecl()
+    ~ASTNode_FieldDecl() override
     {
         delete list;
         delete type;
@@ -441,7 +445,7 @@ public:
     {
         YaccLogger.println("VarDecl " + list->get() + " " + type->get());
     }
-    ~ASTNode_VarDecl()
+    ~ASTNode_VarDecl() override
     {
         delete list;
         delete type;
@@ -519,7 +523,7 @@ public:
     {
         YaccLogger.println("ParaTypeList " + paraList->get() + " " + type->get());
     }
-    ~ASTNode_ParaTypeList()
+    ~ASTNode_ParaTypeList() override
     {
         delete paraList;
         delete type;
@@ -533,20 +537,13 @@ public:
     {
         delete pNode;
     }
-    std::string get()
+    std::string get() override
     {
-        std::stringstream ss("var(");
-        for (auto &i : name_list)
-            ss << i << ",";
-        ss << ")";
-        return ss.str();
+        return "var" + ASTNode_NameList::get();
     }
     void print() override
     {
-        YaccLogger.print("VarParaList (");
-        for (auto &i : name_list)
-            YaccLogger.print(i).print(" ");
-        YaccLogger.println(")");
+        YaccLogger.print("VarParaList " + ASTNode_NameList::get());
     }
 };
 
@@ -557,20 +554,13 @@ public:
     {
         delete pNode;
     }
-    std::string get()
+    std::string get() override
     {
-        std::stringstream ss("(");
-        for (auto &i : name_list)
-            ss << i << ",";
-        ss << ")";
-        return ss.str();
+        return ASTNode_NameList::get();
     }
     void print() override
     {
-        YaccLogger.print("ValParaList (");
-        for (auto &i : name_list)
-            YaccLogger.print(i).print(" ");
-        YaccLogger.println(")");
+        YaccLogger.print("ValParaList " + ASTNode_NameList::get());
     }
 };
 
@@ -620,11 +610,10 @@ public:
 class ASTNode_StmtAssign : public ASTNode_Stmt
 {
     std::string lvalueName;
-    ASTNode_Expr *expr = nullptr;
 
 public:
     ASTNode_StmtAssign(ASTNode_Name *pNode) : lvalueName(std::move(pNode->name)) { delete pNode; }
-    ASTNode_StmtAssign(ASTNode_Name *pNode, ASTNode_Expr *expr) : lvalueName(std::move(pNode->name)), expr(expr)
+    ASTNode_StmtAssign(ASTNode_Name *pNode, ASTNode_Expr *expr) : lvalueName(std::move(pNode->name))
     {
         lvalueName += "[]";
         delete pNode;

@@ -683,6 +683,7 @@ assign_stmt:
     }
     | NAME OP_LB expression OP_RB OP_ASSIGN expression {
         $$ = new ASTNode_StmtAssign($1,$3);
+        $$->append($3);
         $$->append($6);
     }
     | NAME OP_DOT NAME OP_ASSIGN expression {
@@ -947,4 +948,5 @@ args_list:
 void yyerror(const char* s)
 {
     std::cerr << std::endl << s << std::endl;
+    exit(1);
 }
