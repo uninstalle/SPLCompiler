@@ -231,7 +231,7 @@ OP_SEMI
 program:
     program_head routine OP_DOT {
         $$ = new ASTNode_Program($1);
-        ASTHead = $$;
+        ASTHandler::setASTHead($$);
         $$->append($2);
     }
     ;

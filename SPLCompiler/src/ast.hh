@@ -6,14 +6,10 @@
 #include <string>
 #include <vector>
 
-class ASTHandler;
-class CodeGenerator;
 
 class ASTNode
 {
 public:
-	friend ASTHandler;
-	friend CodeGenerator;
 
 	ASTNode *child = nullptr;
 	ASTNode *brother = nullptr;
@@ -160,7 +156,13 @@ public:
 
 class ASTNode_Routine : public ASTNode
 {
+	void scanConstPart(ASTNode* part);
+	void scanTypePart(ASTNode* part);
+	void scanVarPart(ASTNode* part);
+	void scanRoutinePart(ASTNode* part);
 public:
+	llvm::Value* codeGen();
+	
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::Routine;
@@ -177,6 +179,11 @@ class ASTNode_SubRoutine : public ASTNode
 public:
 	llvm::Value *codeGen();
 
+	ASTNodeType getType() override
+	{
+		return ASTNodeType::SubRoutine;
+	}
+	
 	void print() override
 	{
 		YaccLogger.println("SubRoutine");
@@ -941,6 +948,8 @@ public:
 		return ASTNodeType::Stmt;
 	}
 
+	virtual llvm::Value* codeGen() = 0;
+
 	void setLabel(int label)
 	{
 		hasLabel = true;
@@ -1001,6 +1010,8 @@ public:
 		return ASTNodeType::StmtAssign;
 	}
 
+	llvm::Value* codeGen() override;
+
 	void print() override
 	{
 		YaccLogger.println("AssignStmt " + (hasLabel ? (std::to_string(label) + " ") : std::string()) + lvalueName);
@@ -1019,6 +1030,8 @@ public:
 		return ASTNodeType::StmtProc;
 	}
 
+	llvm::Value* codeGen() override;
+
 	void print() override
 	{
 		YaccLogger.println("ProcStmt " + (hasLabel ? (std::to_string(label) + " ") : std::string()) + procName);
@@ -1032,6 +1045,8 @@ public:
 	{
 		return ASTNodeType::StmtCompound;
 	}
+
+	llvm::Value* codeGen() override;
 
 	void print() override
 	{
@@ -1047,6 +1062,8 @@ public:
 		return ASTNodeType::StmtIf;
 	}
 
+	llvm::Value* codeGen() override;
+
 	void print() override
 	{
 		YaccLogger.println("IfStmt " + (hasLabel ? std::to_string(label) : std::string()));
@@ -1061,6 +1078,8 @@ public:
 		return ASTNodeType::StmtRepeat;
 	}
 
+	llvm::Value* codeGen() override;
+	
 	void print() override
 	{
 		YaccLogger.println("RepeatStmt " + (hasLabel ? std::to_string(label) : std::string()));
@@ -1075,6 +1094,8 @@ public:
 		return ASTNodeType::StmtWhile;
 	}
 
+	llvm::Value* codeGen() override;
+	
 	void print() override
 	{
 		YaccLogger.println("WhileStmt " + (hasLabel ? std::to_string(label) : std::string()));
@@ -1094,6 +1115,8 @@ public:
 		return ASTNodeType::StmtFor;
 	}
 
+	llvm::Value* codeGen() override;
+
 	void print() override
 	{
 		YaccLogger.println("ForStmt " + (hasLabel ? (std::to_string(label) + " ") : std::string()) + varName + (isPositive ? " to" : " downto"));
@@ -1107,6 +1130,8 @@ public:
 	{
 		return ASTNodeType::StmtCase;
 	}
+
+	llvm::Value* codeGen() override;
 
 	void print() override
 	{
@@ -1125,6 +1150,8 @@ public:
 	{
 		return ASTNodeType::StmtGoto;
 	}
+
+	llvm::Value* codeGen() override;
 
 	void print() override
 	{
@@ -1272,18 +1299,14 @@ public:
 	}
 };
 
-extern ASTNode *ASTHead;
-
 class ASTHandler
 {
 	static void recursivePrint(ASTNode *head, int depth);
-	static void scanConstPart(ASTNode *part);
-	static void scanTypePart(ASTNode *part);
-	static void scanVarPart(ASTNode *part);
-	static void scanRoutinePart(ASTNode *part);
 
 public:
 	ASTHandler() = delete;
+
+	static void setASTHead(ASTNode* head);
 
 	static void print();
 	static void scanProgramHead();
