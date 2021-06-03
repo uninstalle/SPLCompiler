@@ -62,7 +62,17 @@ llvm::Value *ASTNode_ConstString::codeGen()
 
 llvm::Type *ASTNode_SimpleTypePlain::codeGen()
 {
+	if (typeName == "integer")
+		return llvm::Type::getInt32Ty(TheContext);
+	if (typeName == "real")
+		return llvm::Type::getDoubleTy(TheContext);
+	if (typeName == "char")
+		return llvm::Type::getInt8Ty(TheContext);
+	if (typeName == "string")
 	//TODO
+		return nullptr;
+	if (typeName == "boolean")
+		return llvm::Type::getInt1Ty(TheContext);
 }
 
 llvm::Type *ASTNode_SimpleTypeEnumerate::codeGen()
@@ -138,9 +148,9 @@ llvm::Value *ASTNode_Operator::codeGen()
 	// int promotion
 	auto intPromotion = [&L, &R]()
 	{
-		if (L->getType()->isIntegerTy() && R->getType()->isFloatingPointTy())
+		if (L->getType()->isIntegerTy() && R->getType()->isDoubleTy())
 			L = Builder.CreateSIToFP(L, llvm::Type::getDoubleTy(TheContext), "sitofp");
-		if (L->getType()->isIntegerTy() && R->getType()->isFloatingPointTy())
+		if (L->getType()->isIntegerTy() && R->getType()->isDoubleTy())
 			R = Builder.CreateSIToFP(R, llvm::Type::getDoubleTy(TheContext), "sitofp");
 	};
 
@@ -163,7 +173,7 @@ llvm::Value *ASTNode_Operator::codeGen()
 				return nullptr;
 			}
 		}
-		else if (L->getType()->isFloatingPointTy())
+		else if (L->getType()->isDoubleTy())
 		{
 			// unary float
 			switch (op)
@@ -228,7 +238,7 @@ llvm::Value *ASTNode_Operator::codeGen()
 				return nullptr;
 			}
 		}
-		else if (L->getType()->isFloatingPointTy() && R->getType()->isFloatingPointTy())
+		else if (L->getType()->isDoubleTy() && R->getType()->isDoubleTy())
 		{
 			// binary float
 			switch (op)
@@ -278,6 +288,7 @@ llvm::Value *ASTNode_Operator::codeGen()
 llvm::Function *ASTNode_FunctionHead::codeGen()
 {
 	llvm::FunctionType *funcType;
+
 	if (child->getType() == ASTNodeType::ParaDeclList)
 	{
 		// with para
@@ -287,8 +298,13 @@ llvm::Function *ASTNode_FunctionHead::codeGen()
 
 		while (paraDecl)
 		{
-			for (int i = 0; i < paraDecl->paraList->name_list.size(); ++i)
-				paraTypes.push_back(paraDecl->type->codeGen());
+			if (paraDecl->paraList->getType() == ASTNodeType::VarParaList)
+			{
+				// TODO: reference variable
+			}
+			else if (paraDecl->paraList->getType() == ASTNodeType::ValParaList)
+				for (int i = 0; i < paraDecl->paraList->name_list.size(); ++i)
+					paraTypes.push_back(paraDecl->type->codeGen());
 			paraDecl = dynamic_cast<ASTNode_ParaTypeList *>(paraDecl->brother);
 		}
 
@@ -333,7 +349,7 @@ llvm::Function *ASTNode_FunctionDecl::codeGen()
 		CodeGenLogger.println("Cannot redefine function " + funcHead->functionName);
 		return nullptr;
 	}
-
+	
 	auto BB = llvm::BasicBlock::Create(TheContext, "entry", fun);
 	Builder.SetInsertPoint(BB);
 
@@ -370,8 +386,13 @@ llvm::Function *ASTNode_ProcedureHead::codeGen()
 
 		while (paraDecl)
 		{
-			for (int i = 0; i < paraDecl->paraList->name_list.size(); ++i)
-				paraTypes.push_back(paraDecl->type->codeGen());
+			if (paraDecl->paraList->getType() == ASTNodeType::VarParaList)
+			{
+				// TODO: reference variable
+			}
+			else if (paraDecl->paraList->getType() == ASTNodeType::ValParaList)
+				for (int i = 0; i < paraDecl->paraList->name_list.size(); ++i)
+					paraTypes.push_back(paraDecl->type->codeGen());
 			paraDecl = dynamic_cast<ASTNode_ParaTypeList *>(paraDecl->brother);
 		}
 
@@ -444,6 +465,7 @@ llvm::Function *ASTNode_ProcedureDecl::codeGen()
 llvm::Value *ASTNode_SubRoutine::codeGen()
 {
 	// TODO
+	
 }
 
 void ASTHandler::recursivePrint(ASTNode *head, int depth)
@@ -491,6 +513,7 @@ void ASTHandler::scanProgramHead()
 			scanRoutinePart(headPart);
 		headPart = headPart->brother;
 	}
+	TheModule->print(llvm::errs(), nullptr);
 }
 
 void ASTHandler::scanConstPart(ASTNode *part)
@@ -536,10 +559,12 @@ void ASTHandler::scanRoutinePart(ASTNode *part)
 		if (procDecl->getType() == ASTNode::ASTNodeType::FunctionDecl)
 		{
 			ASTNode_FunctionDecl *p = dynamic_cast<ASTNode_FunctionDecl *>(procDecl);
+			p->codeGen();
 		}
 		else if (procDecl->getType() == ASTNode::ASTNodeType::ProcedureDecl)
 		{
 			ASTNode_ProcedureDecl *p = dynamic_cast<ASTNode_ProcedureDecl *>(procDecl);
+			p->codeGen();
 		}
 
 		procDecl = procDecl->brother;

@@ -27,6 +27,7 @@ int main(int args, char **argv)
     }
 
     ASTHandler::print();
+    ASTHandler::scanProgramHead();
 
     return 0;
 }
