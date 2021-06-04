@@ -160,6 +160,8 @@ class ASTNode_Routine : public ASTNode
 	void scanTypePart(ASTNode* part);
 	void scanVarPart(ASTNode* part);
 	void scanRoutinePart(ASTNode* part);
+	llvm::Function *genRoutineHead();
+
 public:
 	llvm::Value* codeGen();
 	

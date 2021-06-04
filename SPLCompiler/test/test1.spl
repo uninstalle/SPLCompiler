@@ -1,0 +1,27 @@
+program hello;
+var
+	a : integer;
+
+begin
+	if (1) then
+	begin
+		a := 1;
+	end
+	else
+	begin
+		if (2) then
+		begin
+			a := 1;
+		end
+		else
+		begin
+			a := 0;
+		end
+		;
+	end
+	;
+end
+.
+
+
+

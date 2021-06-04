@@ -70,11 +70,11 @@ llvm::Type *ASTNode_SimpleTypePlain::codeGen()
 	if (typeName == "char")
 		return llvm::Type::getInt8Ty(TheContext);
 	if (typeName == "string")
-	//TODO
+		//TODO
 		return nullptr;
 	if (typeName == "boolean")
 		return llvm::Type::getInt1Ty(TheContext);
-	
+
 	CodeGenLogger.println("Unrecognized simple type " + typeName);
 	return nullptr;
 }
@@ -157,13 +157,12 @@ llvm::Value *ASTNode_Operator::codeGen()
 		if (L->getType()->isIntegerTy() && R->getType()->isDoubleTy())
 			R = Builder.CreateSIToFP(R, llvm::Type::getDoubleTy(TheContext), "sitofp");
 		// compute with int with different bit width, promote to i32
-		if(L->getType()->isIntegerTy()&&R->getType()->isIntegerTy()&&
-			L->getType()->getIntegerBitWidth()!=R->getType()->getIntegerBitWidth())
+		if (L->getType()->isIntegerTy() && R->getType()->isIntegerTy() &&
+			L->getType()->getIntegerBitWidth() != R->getType()->getIntegerBitWidth())
 		{
 			L = Builder.CreateZExt(L, llvm::Type::getInt32Ty(TheContext), "intext");
 			R = Builder.CreateZExt(R, llvm::Type::getInt32Ty(TheContext), "intext");
 		}
-
 	};
 
 	if (isUnary)
@@ -327,7 +326,7 @@ llvm::Function *ASTNode_FunctionHead::codeGen()
 		funcType = llvm::FunctionType::get(dynamic_cast<ASTNode_Type *>(child)->codeGen(), false);
 
 	auto fun = llvm::Function::Create(funcType, llvm::Function::InternalLinkage, functionName, TheModule.get());
-	
+
 	// set args' name
 
 	auto iter = fun->args().begin();
@@ -361,10 +360,11 @@ llvm::Function *ASTNode_FunctionDecl::codeGen()
 		CodeGenLogger.println("Cannot redefine function " + funcHead->functionName);
 		return nullptr;
 	}
-	
+
 	auto BB = llvm::BasicBlock::Create(TheContext, "entry", fun);
 	Builder.SetInsertPoint(BB);
 
+	//TODO
 	// set up variable table
 	GlobalTable.clearVariable();
 	for (auto &arg : fun->args())
@@ -474,58 +474,55 @@ llvm::Function *ASTNode_ProcedureDecl::codeGen()
 	}
 }
 
-
-
-void ASTNode_Routine::scanConstPart(ASTNode* part)
+void ASTNode_Routine::scanConstPart(ASTNode *part)
 {
-	ASTNode* constExpr = part->child;
+	ASTNode *constExpr = part->child;
 	while (constExpr)
 	{
-		ASTNode_ConstExpr* p = dynamic_cast<ASTNode_ConstExpr*>(constExpr);
+		ASTNode_ConstExpr *p = dynamic_cast<ASTNode_ConstExpr *>(constExpr);
 		auto v = p->value->codeGen();
 		GlobalTable.insertConstant(p->constName, v);
 		constExpr = constExpr->brother;
 	}
 }
 
-void ASTNode_Routine::scanTypePart(ASTNode* part)
+void ASTNode_Routine::scanTypePart(ASTNode *part)
 {
-	ASTNode* typeDecl = part->child;
+	ASTNode *typeDecl = part->child;
 	while (typeDecl)
 	{
-		ASTNode_TypeDecl* p = dynamic_cast<ASTNode_TypeDecl*>(typeDecl);
+		ASTNode_TypeDecl *p = dynamic_cast<ASTNode_TypeDecl *>(typeDecl);
 		GlobalTable.insertType(p->defName, p->type->codeGen());
 		typeDecl = typeDecl->brother;
 	}
 }
 
-void ASTNode_Routine::scanVarPart(ASTNode* part)
+void ASTNode_Routine::scanVarPart(ASTNode *part)
 {
-	ASTNode* varDecl = part->child;
+	ASTNode *varDecl = part->child;
 	while (varDecl)
 	{
-		ASTNode_VarDecl* p = dynamic_cast<ASTNode_VarDecl*>(varDecl);
+		ASTNode_VarDecl *p = dynamic_cast<ASTNode_VarDecl *>(varDecl);
 		//for (auto& name : p->list->name_list)
 		//	GlobalTable.insertVariable(name, p->type->codeGen());
-		
 
 		varDecl = varDecl->brother;
 	}
 }
 
-void ASTNode_Routine::scanRoutinePart(ASTNode* part)
+void ASTNode_Routine::scanRoutinePart(ASTNode *part)
 {
-	ASTNode* procDecl = part->child;
+	ASTNode *procDecl = part->child;
 	while (procDecl)
 	{
 		if (procDecl->getType() == ASTNodeType::FunctionDecl)
 		{
-			ASTNode_FunctionDecl* p = dynamic_cast<ASTNode_FunctionDecl*>(procDecl);
+			ASTNode_FunctionDecl *p = dynamic_cast<ASTNode_FunctionDecl *>(procDecl);
 			p->codeGen();
 		}
 		else if (procDecl->getType() == ASTNodeType::ProcedureDecl)
 		{
-			ASTNode_ProcedureDecl* p = dynamic_cast<ASTNode_ProcedureDecl*>(procDecl);
+			ASTNode_ProcedureDecl *p = dynamic_cast<ASTNode_ProcedureDecl *>(procDecl);
 			p->codeGen();
 		}
 
@@ -533,16 +530,25 @@ void ASTNode_Routine::scanRoutinePart(ASTNode* part)
 	}
 }
 
-llvm::Value* ASTNode_Routine::codeGen()
+llvm::Function *ASTNode_Routine::genRoutineHead()
+{
+	llvm::FunctionType *funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), false);
+
+	auto fun = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", TheModule.get());
+
+	return fun;
+}
+
+llvm::Value *ASTNode_Routine::codeGen()
 {
 	// Routine is the body of program main, thus here we use global table.
-	
+
 	// incomplete Routine without RoutineHead
 	if (!child || child->getType() != ASTNodeType::RoutineHead)
 		return nullptr;
-	
-	ASTNode* routineHead = child;
-	ASTNode* headPart = routineHead->child;
+
+	ASTNode *routineHead = child;
+	ASTNode *headPart = routineHead->child;
 
 	while (headPart)
 	{
@@ -557,41 +563,52 @@ llvm::Value* ASTNode_Routine::codeGen()
 		headPart = headPart->brother;
 	}
 
-	dynamic_cast<ASTNode_StmtCompound*>(routineHead->brother)->codeGen();
-}
+	auto BB = llvm::BasicBlock::Create(TheContext, "main", genRoutineHead());
+	Builder.SetInsertPoint(BB);
 
+	dynamic_cast<ASTNode_StmtCompound *>(routineHead->brother)->codeGen();
+}
 
 llvm::Value *ASTNode_SubRoutine::codeGen()
 {
 	// subroutine is a code block surrounded by 'begin' and 'end'
-	
+
 	// TODO
 	return nullptr;
 }
 
-llvm::Value* ASTNode_StmtIf::codeGen()
+llvm::Value *ASTNode_StmtIf::codeGen()
 {
 	// child 1, if-condition expr
-	llvm::Value* condV = dynamic_cast<ASTNode_Expr*>(child)->codeGen();
-	if (!condV) return nullptr;
+	llvm::Value *condV = dynamic_cast<ASTNode_Expr *>(child)->codeGen();
+	if (!condV)
+	{
+		CodeGenLogger.println("If stmt has invalid condition");
+		return nullptr;
+	}
 
 	if (condV->getType()->isIntegerTy())
-		condV = Builder.CreateICmpNE(condV, llvm::ConstantInt::get(TheContext, llvm::APInt(condV->getType()->getIntegerBitWidth(),0)), "ifcond");
+		condV = Builder.CreateICmpNE(condV, llvm::ConstantInt::get(TheContext, llvm::APInt(condV->getType()->getIntegerBitWidth(), 0)), "ifcond");
 	else if (condV->getType()->isDoubleTy())
 		condV = Builder.CreateFCmpONE(condV, llvm::ConstantFP::get(TheContext, llvm::APFloat(0.0)), "ifcond");
 
-	llvm::Function* fun = Builder.GetInsertBlock()->getParent();
+	llvm::Function *fun = Builder.GetInsertBlock()->getParent();
 
-	llvm::BasicBlock* thenBB = llvm::BasicBlock::Create(TheContext, "then", fun);
-	llvm::BasicBlock* elseBB = llvm::BasicBlock::Create(TheContext, "else");
-	llvm::BasicBlock* ifcontBB = llvm::BasicBlock::Create(TheContext, "ifcont");
+	llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(TheContext, "then", fun);
+	llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(TheContext, "else");
+	llvm::BasicBlock *ifcontBB = llvm::BasicBlock::Create(TheContext, "ifcont");
 
 	Builder.CreateCondBr(condV, thenBB, elseBB);
 
 	Builder.SetInsertPoint(thenBB);
+
 	// child 2, then expr
-	llvm::Value* thenV = dynamic_cast<ASTNode_Stmt*>(child->child)->codeGen();
-	if (!thenV) return nullptr;
+	llvm::Value *thenV = dynamic_cast<ASTNode_Stmt *>(child->brother)->codeGen();
+	if (!thenV)
+	{
+		CodeGenLogger.println("If stmt has invalid then stmt");
+		return nullptr;
+	}
 
 	Builder.CreateBr(ifcontBB);
 	thenBB = Builder.GetInsertBlock();
@@ -600,8 +617,12 @@ llvm::Value* ASTNode_StmtIf::codeGen()
 	Builder.SetInsertPoint(elseBB);
 
 	// child 3, else expr
-	llvm::Value* elseV = dynamic_cast<ASTNode_Stmt*>(child->child->child)->codeGen();
-	if (!elseV)	return nullptr;
+	llvm::Value *elseV = dynamic_cast<ASTNode_Stmt *>(child->brother->brother)->codeGen();
+	if (!elseV)
+	{
+		CodeGenLogger.println("If stmt has invalid else stmt");
+		return nullptr;
+	}
 
 	Builder.CreateBr(ifcontBB);
 	elseBB = Builder.GetInsertBlock();
@@ -609,7 +630,7 @@ llvm::Value* ASTNode_StmtIf::codeGen()
 	fun->getBasicBlockList().push_back(ifcontBB);
 	Builder.SetInsertPoint(ifcontBB);
 	//TODO: type?
-	llvm::PHINode* phiNode =
+	llvm::PHINode *phiNode =
 		Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "iftmp");
 
 	phiNode->addIncoming(thenV, thenBB);
@@ -617,10 +638,10 @@ llvm::Value* ASTNode_StmtIf::codeGen()
 	return phiNode;
 }
 
-llvm::Value* ASTNode_StmtFor::codeGen()
+llvm::Value *ASTNode_StmtFor::codeGen()
 {
 	// child 1, start value expr
-	auto startValue = dynamic_cast<ASTNode_Expr*>(child)->codeGen();
+	auto startValue = dynamic_cast<ASTNode_Expr *>(child)->codeGen();
 	if (!startValue)
 		return nullptr;
 	// only supports integer as stepping value
@@ -630,20 +651,20 @@ llvm::Value* ASTNode_StmtFor::codeGen()
 	auto fun = Builder.GetInsertBlock()->getParent();
 	auto prevBB = Builder.GetInsertBlock();
 	auto loopBB = llvm::BasicBlock::Create(TheContext, "forloop", fun);
-	
+
 	Builder.CreateBr(loopBB);
 
 	Builder.SetInsertPoint(loopBB);
-	llvm::PHINode* variable = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext),
-		2, varName);
+	llvm::PHINode *variable = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext),
+												2, varName);
 	variable->addIncoming(startValue, prevBB);
 	// save shadowed value if existed
-	// TODO: replace it with a hierarchy variable table 
+	// TODO: replace it with a hierarchy variable table
 	auto shadowedVar = GlobalTable.getVariable(varName);
 	GlobalTable.insertVariable(varName, variable);
 
 	// child 2, end value expr
-	auto endValue = dynamic_cast<ASTNode_Expr*>(child->child)->codeGen();
+	auto endValue = dynamic_cast<ASTNode_Expr *>(child->brother)->codeGen();
 	if (!endValue)
 		return nullptr;
 	// only supports integer as stepping value
@@ -651,27 +672,26 @@ llvm::Value* ASTNode_StmtFor::codeGen()
 		return nullptr;
 
 	// child 3, for body
-	auto body = dynamic_cast<ASTNode_Stmt*>(child->child->child)->codeGen();
+	auto body = dynamic_cast<ASTNode_Stmt *>(child->brother->brother)->codeGen();
 	if (!body)
 		return nullptr;
 
-	auto stepping = this->isPositive? llvm::ConstantInt::get(TheContext,llvm::APInt(32,1,true))
-		: llvm::ConstantInt::get(TheContext, llvm::APInt(32, -1, true));
+	auto stepping = this->isPositive ? llvm::ConstantInt::get(TheContext, llvm::APInt(32, 1, true))
+									 : llvm::ConstantInt::get(TheContext, llvm::APInt(32, -1, true));
 
 	auto nextVar = Builder.CreateAdd(variable, stepping, "stepping");
 
 	auto loopCond = Builder.CreateICmpSLE(endValue, nextVar, "forloopcond");
 
-	llvm::BasicBlock* loopEndBB = Builder.GetInsertBlock();
-	llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(TheContext, "afterforloop", fun);
+	llvm::BasicBlock *loopEndBB = Builder.GetInsertBlock();
+	llvm::BasicBlock *afterBB = llvm::BasicBlock::Create(TheContext, "afterforloop", fun);
 
 	// test if the loop is end
 	Builder.CreateCondBr(loopCond, loopBB, afterBB);
-	
+
 	Builder.SetInsertPoint(afterBB);
 	variable->addIncoming(nextVar, loopEndBB);
 
-	
 	if (shadowedVar)
 		GlobalTable.insertVariable(varName, shadowedVar);
 	else
@@ -681,26 +701,33 @@ llvm::Value* ASTNode_StmtFor::codeGen()
 	return llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
 }
 
-llvm::Value* ASTNode_StmtCompound::codeGen()
+llvm::Value *ASTNode_StmtCompound::codeGen()
 {
-	auto stmtList =child;
+	auto stmtList = child;
 	auto stmt = stmtList->child;
 	// empty code block
-	if(!stmt)
+	if (!stmt)
 		return llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
-	
-	while(stmt)
+
+	while (stmt)
 	{
-		auto res = dynamic_cast<ASTNode_Stmt*>(stmt)->codeGen();
+		// debug info
+		CodeGenLogger.print("Compound stmt generating stmt: ");
+		CodeGenLogger.println(std::to_string(static_cast<int>(stmt->getType())));
+
+		auto res = dynamic_cast<ASTNode_Stmt *>(stmt)->codeGen();
 		if (!res)
+		{
+			CodeGenLogger.println("Compound stmt has invalid stmt");
 			return nullptr;
+		}
 		stmt = stmt->brother;
 	}
 
 	return llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
 }
 
-llvm::Value* ASTNode_StmtRepeat::codeGen()
+llvm::Value *ASTNode_StmtRepeat::codeGen()
 {
 	auto fun = Builder.GetInsertBlock()->getParent();
 	auto loopBB = llvm::BasicBlock::Create(TheContext, "repeatloop", fun);
@@ -709,28 +736,31 @@ llvm::Value* ASTNode_StmtRepeat::codeGen()
 
 	Builder.SetInsertPoint(loopBB);
 
-
 	// child 1, loop body stmt_list
-	auto stmtList = dynamic_cast<ASTNode_Stmt*>(child);
+	auto stmtList = dynamic_cast<ASTNode_Stmt *>(child);
 	auto stmt = stmtList->child;
 	while (stmt)
 	{
-		auto res = dynamic_cast<ASTNode_Stmt*>(stmt)->codeGen();
+		auto res = dynamic_cast<ASTNode_Stmt *>(stmt)->codeGen();
 		stmt = stmt->brother;
 		if (!res)
+		{
+			CodeGenLogger.println("Repeat stmt has invalid stmt");
 			return nullptr;
+		}
 	}
 
-
 	// child 2, end cond
-	auto endValue = dynamic_cast<ASTNode_Expr*>(child->child)->codeGen();
+	auto endValue = dynamic_cast<ASTNode_Expr *>(child->brother)->codeGen();
 	if (!endValue)
+	{
+		CodeGenLogger.println("Repeat stmt has invalid end expression");
 		return nullptr;
-	
+	}
 
 	auto loopCond = Builder.CreateICmpNE(endValue, llvm::ConstantInt::get(TheContext, llvm::APInt(1, 1)), "repeatloopcond");
-	
-	llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(TheContext, "afterrepeatloop", fun);
+
+	llvm::BasicBlock *afterBB = llvm::BasicBlock::Create(TheContext, "afterrepeatloop", fun);
 
 	// test if the loop is end
 	Builder.CreateCondBr(loopCond, loopBB, afterBB);
@@ -741,7 +771,7 @@ llvm::Value* ASTNode_StmtRepeat::codeGen()
 	return llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
 }
 
-llvm::Value* ASTNode_StmtWhile::codeGen()
+llvm::Value *ASTNode_StmtWhile::codeGen()
 {
 	auto fun = Builder.GetInsertBlock()->getParent();
 	auto loopBB = llvm::BasicBlock::Create(TheContext, "whileloop", fun);
@@ -750,22 +780,25 @@ llvm::Value* ASTNode_StmtWhile::codeGen()
 
 	Builder.SetInsertPoint(loopBB);
 
-
 	// child 1, end cond
-	auto endValue = dynamic_cast<ASTNode_Expr*>(child)->codeGen();
+	auto endValue = dynamic_cast<ASTNode_Expr *>(child)->codeGen();
 	if (!endValue)
+	{
+		CodeGenLogger.println("While stmt has invalid end expression");
 		return nullptr;
+	}
 
-	
 	// child 2, loop body stmt
-	auto body = dynamic_cast<ASTNode_Stmt*>(child->child)->codeGen();
+	auto body = dynamic_cast<ASTNode_Stmt *>(child->brother)->codeGen();
 	if (!body)
+	{
+		CodeGenLogger.println("While stmt has invalid stmt");
 		return nullptr;
-
+	}
 
 	auto loopCond = Builder.CreateICmpEQ(endValue, llvm::ConstantInt::get(TheContext, llvm::APInt(1, 1)), "whileloopcond");
 
-	llvm::BasicBlock* afterBB = llvm::BasicBlock::Create(TheContext, "afterwhileloop", fun);
+	llvm::BasicBlock *afterBB = llvm::BasicBlock::Create(TheContext, "afterwhileloop", fun);
 
 	// test if the loop is end
 	Builder.CreateCondBr(loopCond, loopBB, afterBB);
@@ -776,58 +809,60 @@ llvm::Value* ASTNode_StmtWhile::codeGen()
 	return llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
 }
 
-llvm::Value* ASTNode_StmtProc::codeGen()
+llvm::Value *ASTNode_StmtProc::codeGen()
 {
 	auto f = TheModule->getFunction(procName);
 	if (f)
 	{
-		if(f->arg_size() == 0)
+		if (f->arg_size() == 0)
 		{
-			std::vector<llvm::Value*> args;
-			return Builder.CreateCall(f,llvm::None,"calltmp");
+			std::vector<llvm::Value *> args;
+			return Builder.CreateCall(f, llvm::None, "calltmp");
 		}
 		else
 		{
 			// function expected args but stmt has no args
 			if (!child)
+			{
+				CodeGenLogger.println("Function expects args but not provided: " + procName);
 				return nullptr;
+			}
 
-			auto argList = dynamic_cast<ASTNode_ArgList*>(child);
+			auto argList = dynamic_cast<ASTNode_ArgList *>(child);
 			if (argList->count == f->arg_size())
 			{
-				std::vector<llvm::Value*> args;
-				auto argNode = dynamic_cast<ASTNode_Expr*>(argList->child);
+				std::vector<llvm::Value *> args;
+				auto argNode = dynamic_cast<ASTNode_Expr *>(argList->child);
 				while (argNode->brother)
 				{
 					args.push_back(argNode->codeGen());
-					argNode = dynamic_cast<ASTNode_Expr*>(argNode->brother);
+					argNode = dynamic_cast<ASTNode_Expr *>(argNode->brother);
 				}
 				return Builder.CreateCall(f, args, "calltmp");
 			}
+			CodeGenLogger.println("Function expects " + std::to_string(f->arg_size()) + " args but provided " + std::to_string(argList->count) + ": " + procName);
 			return nullptr;
 		}
 	}
+	CodeGenLogger.println("Function not found in symbol table: " + procName);
 	return nullptr;
 }
 
+llvm::Value *ASTNode_StmtAssign::codeGen()
+{
+	//TODO
+	return llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
+}
 
-llvm::Value* ASTNode_StmtAssign::codeGen()
+llvm::Value *ASTNode_StmtCase::codeGen()
 {
 	//TODO
 }
 
-llvm::Value* ASTNode_StmtCase::codeGen()
+llvm::Value *ASTNode_StmtGoto::codeGen()
 {
 	//TODO
 }
-
-llvm::Value* ASTNode_StmtGoto::codeGen()
-{
-	//TODO
-}
-
-
-
 
 void ASTHandler::recursivePrint(ASTNode *head, int depth)
 {
@@ -846,11 +881,10 @@ void ASTHandler::recursivePrint(ASTNode *head, int depth)
 	} while (current);
 }
 
-void ASTHandler::setASTHead(ASTNode* head)
+void ASTHandler::setASTHead(ASTNode *head)
 {
 	ASTHead = head;
 }
-
 
 void ASTHandler::print()
 {
@@ -862,9 +896,8 @@ void ASTHandler::scanProgramHead()
 	// incomplete AST without Routine
 	if (!ASTHead || !ASTHead->child || ASTHead->child->getType() != ASTNode::ASTNodeType::Routine)
 		return;
-	
-	auto routine = dynamic_cast<ASTNode_Routine*>(ASTHead->child);
+
+	auto routine = dynamic_cast<ASTNode_Routine *>(ASTHead->child);
 	routine->codeGen();
 	TheModule->print(llvm::errs(), nullptr);
 }
-
