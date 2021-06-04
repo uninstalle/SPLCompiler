@@ -35,27 +35,27 @@ static std::unique_ptr<llvm::Module> TheModule = std::make_unique<llvm::Module>(
 
 ASTNode *ASTHead = nullptr;
 
-llvm::Value *ASTNode_ConstInteger::codeGen()
+llvm::Constant*ASTNode_ConstInteger::codeGen()
 {
 	return llvm::ConstantInt::get(TheContext, llvm::APInt(32, value, true));
 }
 
-llvm::Value *ASTNode_ConstReal::codeGen()
+llvm::Constant*ASTNode_ConstReal::codeGen()
 {
 	return llvm::ConstantFP::get(TheContext, llvm::APFloat(value));
 }
 
-llvm::Value *ASTNode_ConstCharacter::codeGen()
+llvm::Constant*ASTNode_ConstCharacter::codeGen()
 {
 	return llvm::ConstantInt::get(TheContext, llvm::APInt(8, value, false));
 }
 
-llvm::Value *ASTNode_ConstBoolean::codeGen()
+llvm::Constant*ASTNode_ConstBoolean::codeGen()
 {
 	return llvm::ConstantInt::get(TheContext, llvm::APInt(1, value, false));
 }
 
-llvm::Value *ASTNode_ConstString::codeGen()
+llvm::Constant*ASTNode_ConstString::codeGen()
 {
 	//TODO
 	return nullptr;
@@ -503,6 +503,7 @@ void ASTNode_Routine::scanVarPart(ASTNode *part)
 	while (varDecl)
 	{
 		ASTNode_VarDecl *p = dynamic_cast<ASTNode_VarDecl *>(varDecl);
+		//TODO
 		//for (auto& name : p->list->name_list)
 		//	GlobalTable.insertVariable(name, p->type->codeGen());
 
@@ -617,12 +618,19 @@ llvm::Value *ASTNode_StmtIf::codeGen()
 	Builder.SetInsertPoint(elseBB);
 
 	// child 3, else expr
-	llvm::Value *elseV = dynamic_cast<ASTNode_Stmt *>(child->brother->brother)->codeGen();
-	if (!elseV)
+	llvm::Value *elseV;
+	if (child->brother->brother)
 	{
-		CodeGenLogger.println("If stmt has invalid else stmt");
-		return nullptr;
+		// with else clause
+		elseV = dynamic_cast<ASTNode_Stmt *>(child->brother->brother)->codeGen();
+		if (!elseV)
+		{
+			CodeGenLogger.println("If stmt has invalid else stmt");
+			return nullptr;
+		}
 	}
+	else
+		elseV = llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
 
 	Builder.CreateBr(ifcontBB);
 	elseBB = Builder.GetInsertBlock();
@@ -857,11 +865,144 @@ llvm::Value *ASTNode_StmtAssign::codeGen()
 llvm::Value *ASTNode_StmtCase::codeGen()
 {
 	//TODO
+
+	// child 1, case condition expr
+	llvm::Value *condV = dynamic_cast<ASTNode_Expr *>(child)->codeGen();
+	if (!condV)
+	{
+		CodeGenLogger.println("Case stmt has invalid condition");
+		return nullptr;
+	}
+	if (!condV->getType()->isIntegerTy())
+	{
+		CodeGenLogger.println("Case stmt expects integer condition");
+		return nullptr;
+	}
+
+	// child 2, then expr
+	auto caseExprList = child->brother;
+	auto caseExpr = caseExprList->child;
+
+	int caseCount = 0;
+	std::vector<std::pair<llvm::Constant*, llvm::BasicBlock*>> cases;
+	 llvm::BasicBlock* defaultBB = nullptr;
+
+	 auto createCaseBB = [] {
+		 auto fun = Builder.GetInsertBlock()->getParent();
+		 auto caseBB = llvm::BasicBlock::Create(TheContext, "case", fun);
+		 return caseBB;
+	 };
+	
+	while (caseExpr)
+	{
+		caseCount++;
+		auto caseVar = caseExpr->child;
+		auto caseStmt = caseVar->brother;
+		
+		if (caseVar->getType() == ASTNodeType::Const) 
+		{
+			// const literal case
+			auto v = dynamic_cast<ASTNode_Const*>(caseVar)->codeGen();
+			if(!v->getType()->isIntegerTy())
+			{
+				CodeGenLogger.println("Case stmt expects integer");
+				return nullptr;
+			}
+			
+			auto bb = createCaseBB();
+			Builder.SetInsertPoint(bb);
+			auto caseV = dynamic_cast<ASTNode_Stmt*>(caseStmt)->codeGen();
+			if (!caseV)
+			{
+				CodeGenLogger.println("case has invalid stmt");
+				return nullptr;
+			}
+			cases.push_back(std::make_pair(v, bb));
+		}
+		else if (caseVar->getType() == ASTNodeType::Name)
+		{
+			auto name = dynamic_cast<ASTNode_Name*>(caseVar)->name;
+			if (name == "else")
+			{
+				// default case
+				auto fun = Builder.GetInsertBlock()->getParent();
+				defaultBB = llvm::BasicBlock::Create(TheContext, "default",fun);
+				
+				Builder.SetInsertPoint(defaultBB);
+				auto caseV = dynamic_cast<ASTNode_Stmt*>(caseStmt)->codeGen();
+				if (!caseV)
+				{
+					CodeGenLogger.println("case has invalid stmt");
+					return nullptr;
+				}
+				
+			}
+			else
+			{
+				// const variable case
+				auto v = GlobalTable.getConstant(name);
+				if (!v->getType()->isIntegerTy())
+				{
+					CodeGenLogger.println("Case stmt expects integer");
+					return nullptr;
+				}
+				auto bb = createCaseBB();
+				Builder.SetInsertPoint(bb);
+				auto caseV = dynamic_cast<ASTNode_Stmt*>(caseStmt)->codeGen();
+				if (!caseV)
+				{
+					CodeGenLogger.println("case has invalid stmt");
+					return nullptr;
+				}
+				cases.emplace_back(std::make_pair(v, bb));
+			}
+		}
+		
+
+		caseExpr = caseExpr->brother;
+	}
+
+	if(!defaultBB)
+	{
+		auto fun = Builder.GetInsertBlock()->getParent();
+		defaultBB = llvm::BasicBlock::Create(TheContext, "default", fun);
+	}
+
+	auto sw = Builder.CreateSwitch(condV, defaultBB,caseCount);
+
+	for(auto &c :cases)
+		sw->addCase(reinterpret_cast<llvm::ConstantInt*>(c.first), c.second);
+
+	Builder.SetInsertPoint(defaultBB);
+	
 }
 
 llvm::Value *ASTNode_StmtGoto::codeGen()
 {
-	//TODO
+	// only look for labels in the same parent block.
+	// still, this may not reach labels after it.
+	// should use a jump table to store all labelled basic blocks pointers.
+	llvm::Function *fun = Builder.GetInsertBlock()->getParent();
+	llvm::BasicBlock *gotoBB = nullptr;
+	for (auto &bb : fun->getBasicBlockList())
+	{
+		if (bb.getName() == std::to_string(label))
+		{
+			gotoBB = &bb;
+			break;
+		}
+	}
+
+	if (gotoBB)
+	{
+		Builder.CreateBr(gotoBB);
+		return llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
+	}
+	else
+	{
+		CodeGenLogger.println("Invalid label in goto stmt: " + std::to_string(label));
+		return nullptr;
+	}
 }
 
 void ASTHandler::recursivePrint(ASTNode *head, int depth)

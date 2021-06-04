@@ -5,7 +5,7 @@
 
 class SymbolTable
 {
-	std::map<std::string, llvm::Value*> constant;
+	std::map<std::string, llvm::Constant*> constant;
 	std::map<std::string, llvm::Type*> type;
 	std::map<std::string, llvm::Value*> variable;
 	std::map<std::string, llvm::Function*> function;
@@ -13,11 +13,11 @@ class SymbolTable
 public:
 
 
-	void insertConstant(const std::string& name, llvm::Value* value)
+	void insertConstant(const std::string& name, llvm::Constant* value)
 	{
 		constant.insert(std::make_pair(name, value));
 	}
-	llvm::Value* getConstant(const std::string& name)
+	llvm::Constant* getConstant(const std::string& name)
 	{
 		auto res = constant.find(name);
 		if (res == constant.end())

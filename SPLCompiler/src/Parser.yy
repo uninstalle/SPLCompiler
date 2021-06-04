@@ -783,12 +783,18 @@ case_expr_list:
 
 case_expr:
     const_value OP_COLON stmt OP_SEMI {
-        $$ = new ASTNode_CaseExpr($1);
+        $$ = new ASTNode_CaseExpr();
+        $$->append($1);
         $$->append($3);
     }
     | NAME OP_COLON stmt OP_SEMI {
-        $$ = new ASTNode_CaseExpr($1);
+        $$ = new ASTNode_CaseExpr();
+        $$->append($1);
         $$->append($3);
+    }
+    | KW_ELSE stmt OP_SEMI {
+        $$ = new ASTNode_CaseExpr();
+        $$->append($2);
     }
     ;
 

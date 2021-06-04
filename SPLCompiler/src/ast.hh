@@ -232,7 +232,7 @@ public:
 		return ASTNodeType::Const;
 	}
 
-	virtual llvm::Value *codeGen() = 0;
+	virtual llvm::Constant *codeGen() = 0;
 
 	void print() override
 	{
@@ -257,7 +257,7 @@ public:
 		return ASTNodeType::ConstInteger;
 	}
 
-	llvm::Value *codeGen() override;
+	llvm::Constant*codeGen() override;
 
 	void print() override
 	{
@@ -282,7 +282,7 @@ public:
 		return ASTNodeType::ConstReal;
 	}
 
-	llvm::Value *codeGen() override;
+	llvm::Constant*codeGen() override;
 
 	void print() override
 	{
@@ -307,7 +307,7 @@ public:
 		return ASTNodeType::ConstCharacter;
 	}
 
-	llvm::Value *codeGen() override;
+	llvm::Constant*codeGen() override;
 
 	void print() override
 	{
@@ -332,7 +332,7 @@ public:
 		return ASTNodeType::ConstString;
 	}
 
-	llvm::Value *codeGen() override;
+	llvm::Constant*codeGen() override;
 
 	void print() override
 	{
@@ -357,7 +357,7 @@ public:
 		return ASTNodeType::ConstBoolean;
 	}
 
-	llvm::Value *codeGen() override;
+	llvm::Constant*codeGen() override;
 
 	void print() override
 	{
@@ -1163,12 +1163,8 @@ public:
 
 class ASTNode_CaseExpr : public ASTNode
 {
-	std::string caseVar;
 
 public:
-	ASTNode_CaseExpr(ASTNode_Const *pNode) : caseVar(pNode->get()) { delete pNode; }
-
-	ASTNode_CaseExpr(ASTNode_Name *pNode) : caseVar(std::move(pNode->name)) { delete pNode; }
 
 	ASTNodeType getType() override
 	{
@@ -1177,7 +1173,7 @@ public:
 
 	void print() override
 	{
-		YaccLogger.println("CaseExpr " + caseVar);
+		YaccLogger.println("CaseExpr");
 	}
 };
 
