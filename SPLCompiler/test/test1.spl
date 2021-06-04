@@ -3,13 +3,13 @@ var
 	a : integer;
 
 begin
-	if (1) then
+	if (1=2) then
 	begin
 		a := 1;
 	end
 	else
 	begin
-		if (2) then
+		if (2=2) then
 		begin
 			a := 1;
 		end

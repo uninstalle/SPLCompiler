@@ -37,7 +37,7 @@ ASTNode *ASTHead = nullptr;
 
 llvm::Value *ASTNode_ConstInteger::codeGen()
 {
-	return llvm::ConstantInt::get(TheContext, llvm::APSInt(value));
+	return llvm::ConstantInt::get(TheContext, llvm::APInt(32, value, true));
 }
 
 llvm::Value *ASTNode_ConstReal::codeGen()
@@ -47,12 +47,12 @@ llvm::Value *ASTNode_ConstReal::codeGen()
 
 llvm::Value *ASTNode_ConstCharacter::codeGen()
 {
-	return llvm::ConstantInt::get(TheContext, llvm::APSInt(value));
+	return llvm::ConstantInt::get(TheContext, llvm::APInt(8, value, false));
 }
 
 llvm::Value *ASTNode_ConstBoolean::codeGen()
 {
-	return llvm::ConstantInt::get(TheContext, llvm::APSInt(value));
+	return llvm::ConstantInt::get(TheContext, llvm::APInt(1, value, false));
 }
 
 llvm::Value *ASTNode_ConstString::codeGen()
@@ -174,7 +174,7 @@ llvm::Value *ASTNode_Operator::codeGen()
 			switch (op)
 			{
 			case OPERATOR::MINUS:
-				return Builder.CreateSub(llvm::ConstantInt::get(TheContext, llvm::APSInt(L->getType()->getIntegerBitWidth())), L, "subtmp");
+				return Builder.CreateSub(llvm::ConstantInt::get(TheContext, llvm::APInt(L->getType()->getIntegerBitWidth(), 0, true)), L, "subtmp");
 
 			case OPERATOR::NOT:
 				return Builder.CreateNot(L, "nottmp");
