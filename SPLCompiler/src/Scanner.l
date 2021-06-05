@@ -523,7 +523,6 @@ unrecognized .
 %}
 
 {name} {
-    // TODO: copy the value
    yylval.node_name = new ASTNode_Name(yytext);
     colno += yyleng;
     LexLogger.print("NAME:").println(yytext);

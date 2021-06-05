@@ -2,13 +2,16 @@
 #include <map>
 #include <string>
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Instructions.h>
 
 class SymbolTable
 {
 	std::map<std::string, llvm::Constant*> constant;
 	std::map<std::string, llvm::Type*> type;
-	std::map<std::string, llvm::Value*> variable;
+	std::map<std::string, llvm::AllocaInst*> variable;
 	std::map<std::string, llvm::Function*> function;
+
+	SymbolTable* prev = nullptr;
 
 public:
 
@@ -37,7 +40,7 @@ public:
 		else return res->second;
 	}
 
-	void insertVariable(const std::string& name, llvm::Value* value)
+	void insertVariable(const std::string& name, llvm::AllocaInst* value)
 	{
 		variable.insert(std::make_pair(name, value));
 	}
@@ -72,3 +75,4 @@ public:
 };
 
 extern SymbolTable GlobalTable;
+extern SymbolTable* currentSymbolTable;

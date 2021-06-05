@@ -6,11 +6,9 @@
 #include <string>
 #include <vector>
 
-
 class ASTNode
 {
 public:
-
 	ASTNode *child = nullptr;
 	ASTNode *brother = nullptr;
 
@@ -156,15 +154,15 @@ public:
 
 class ASTNode_Routine : public ASTNode
 {
-	void scanConstPart(ASTNode* part);
-	void scanTypePart(ASTNode* part);
-	void scanVarPart(ASTNode* part);
-	void scanRoutinePart(ASTNode* part);
+	void scanConstPart(ASTNode *part);
+	void scanTypePart(ASTNode *part);
+	void scanVarPart(ASTNode *part);
+	void scanRoutinePart(ASTNode *part);
 	llvm::Function *genRoutineHead();
 
 public:
-	llvm::Value* codeGen();
-	
+	llvm::Value *codeGen();
+
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::Routine;
@@ -178,14 +176,19 @@ public:
 
 class ASTNode_SubRoutine : public ASTNode
 {
+	void scanConstPart(ASTNode *part);
+	void scanTypePart(ASTNode *part);
+	void scanVarPart(ASTNode *part);
+	void scanRoutinePart(ASTNode *part);
+
 public:
-	llvm::Value *codeGen();
+	llvm::Value *codeGen(llvm::Function *head);
 
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::SubRoutine;
 	}
-	
+
 	void print() override
 	{
 		YaccLogger.println("SubRoutine");
@@ -257,7 +260,7 @@ public:
 		return ASTNodeType::ConstInteger;
 	}
 
-	llvm::Constant*codeGen() override;
+	llvm::Constant *codeGen() override;
 
 	void print() override
 	{
@@ -282,7 +285,7 @@ public:
 		return ASTNodeType::ConstReal;
 	}
 
-	llvm::Constant*codeGen() override;
+	llvm::Constant *codeGen() override;
 
 	void print() override
 	{
@@ -307,7 +310,7 @@ public:
 		return ASTNodeType::ConstCharacter;
 	}
 
-	llvm::Constant*codeGen() override;
+	llvm::Constant *codeGen() override;
 
 	void print() override
 	{
@@ -317,10 +320,11 @@ public:
 
 class ASTNode_ConstString : public ASTNode_Const
 {
+	std::string str;
 	const char *&value = ASTNode_Const::value.string;
 
 public:
-	ASTNode_ConstString(const char *val) : ASTNode_Const(val) {}
+	ASTNode_ConstString(const char *val) : str(std::move(val)), ASTNode_Const(str.c_str()) {}
 
 	std::string get() override
 	{
@@ -332,7 +336,7 @@ public:
 		return ASTNodeType::ConstString;
 	}
 
-	llvm::Constant*codeGen() override;
+	llvm::Constant *codeGen() override;
 
 	void print() override
 	{
@@ -357,7 +361,7 @@ public:
 		return ASTNodeType::ConstBoolean;
 	}
 
-	llvm::Constant*codeGen() override;
+	llvm::Constant *codeGen() override;
 
 	void print() override
 	{
@@ -413,7 +417,7 @@ public:
 		return ASTNodeType::Type;
 	}
 
-	virtual llvm::Type *codeGen() = 0;
+	virtual llvm::Type *codeGen(bool isRef = false) = 0;
 
 	void print() override
 	{
@@ -453,7 +457,7 @@ public:
 		return ASTNodeType::SimpleTypePlain;
 	}
 
-	llvm::Type *codeGen() override;
+	llvm::Type *codeGen(bool isRef) override;
 
 	void print() override
 	{
@@ -526,7 +530,7 @@ public:
 		YaccLogger.println("SimpleTypeEnum " + list->get());
 	}
 
-	llvm::Type *codeGen() override;
+	llvm::Type *codeGen(bool isRef) override;
 
 	~ASTNode_SimpleTypeEnumerate() override
 	{
@@ -561,7 +565,7 @@ public:
 		return ASTNodeType::SimpleTypeSubrange;
 	}
 
-	llvm::Type *codeGen() override;
+	llvm::Type *codeGen(bool isRef) override;
 
 	void print() override
 	{
@@ -587,7 +591,7 @@ public:
 		return ASTNodeType::ArrayType;
 	}
 
-	llvm::Type *codeGen() override;
+	llvm::Type *codeGen(bool isRef) override;
 
 	void print() override
 	{
@@ -615,7 +619,7 @@ public:
 		return ASTNodeType::RecordType;
 	}
 
-	llvm::Type *codeGen() override;
+	llvm::Type *codeGen(bool isRef) override;
 
 	void print() override
 	{
@@ -950,7 +954,7 @@ public:
 		return ASTNodeType::Stmt;
 	}
 
-	virtual llvm::Value* codeGen() = 0;
+	virtual llvm::Value *codeGen() = 0;
 
 	void setLabel(int label)
 	{
@@ -1012,7 +1016,7 @@ public:
 		return ASTNodeType::StmtAssign;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -1032,7 +1036,7 @@ public:
 		return ASTNodeType::StmtProc;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -1048,7 +1052,7 @@ public:
 		return ASTNodeType::StmtCompound;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -1064,7 +1068,7 @@ public:
 		return ASTNodeType::StmtIf;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -1080,8 +1084,8 @@ public:
 		return ASTNodeType::StmtRepeat;
 	}
 
-	llvm::Value* codeGen() override;
-	
+	llvm::Value *codeGen() override;
+
 	void print() override
 	{
 		YaccLogger.println("RepeatStmt " + (hasLabel ? std::to_string(label) : std::string()));
@@ -1096,8 +1100,8 @@ public:
 		return ASTNodeType::StmtWhile;
 	}
 
-	llvm::Value* codeGen() override;
-	
+	llvm::Value *codeGen() override;
+
 	void print() override
 	{
 		YaccLogger.println("WhileStmt " + (hasLabel ? std::to_string(label) : std::string()));
@@ -1117,7 +1121,7 @@ public:
 		return ASTNodeType::StmtFor;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -1133,7 +1137,7 @@ public:
 		return ASTNodeType::StmtCase;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -1153,7 +1157,7 @@ public:
 		return ASTNodeType::StmtGoto;
 	}
 
-	llvm::Value* codeGen() override;
+	llvm::Value *codeGen() override;
 
 	void print() override
 	{
@@ -1165,7 +1169,6 @@ class ASTNode_CaseExpr : public ASTNode
 {
 
 public:
-
 	ASTNodeType getType() override
 	{
 		return ASTNodeType::CaseExpr;
@@ -1304,7 +1307,7 @@ class ASTHandler
 public:
 	ASTHandler() = delete;
 
-	static void setASTHead(ASTNode* head);
+	static void setASTHead(ASTNode *head);
 
 	static void print();
 	static void scanProgramHead();
