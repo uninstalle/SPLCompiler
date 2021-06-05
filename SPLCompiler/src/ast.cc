@@ -28,6 +28,13 @@ ASTNode *ASTHead = nullptr;
 
 auto retValZero = llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
 
+llvm::AllocaInst* createEntryBlockAlloca(llvm::Function* fun,
+	const std::string& varName, llvm::Type* type) {
+	llvm::IRBuilder<> builder(&fun->getEntryBlock(),
+		fun->getEntryBlock().begin());
+	return builder.CreateAlloca(type, nullptr, varName);
+}
+
 llvm::Constant *ASTNode_ConstInteger::codeGen()
 {
 	return llvm::ConstantInt::get(TheContext, llvm::APInt(32, value, true));
@@ -123,32 +130,61 @@ llvm::Value *ASTNode_Operand::codeGen()
 		return dynamic_cast<ASTNode_Const *>(child)->codeGen();
 
 	// const variable
-	auto c = GlobalTable.getConstant(name);
+	auto c = currentSymbolTable->getConstant(name);
 	if (c)
 		return c;
 
 	// mutable variable
-	// TODO
-	auto v = GlobalTable.getVariable(name);
+	auto v = currentSymbolTable->getVariable(name);
 	if (v)
-		return v;
+		return Builder.CreateLoad(v, name);
 
 	// function
-	// TODO add ref support
 	auto f = TheModule->getFunction(name);
 	if (f)
 	{
-		auto argList = dynamic_cast<ASTNode_ArgList *>(child);
-		if (argList->count == f->arg_size())
+		// function without args
+		if (f->arg_size() == 0)
 		{
-			std::vector<llvm::Value *> args;
-			auto argNode = dynamic_cast<ASTNode_Expr *>(argList->child);
-			while (argNode->brother)
+			std::vector<llvm::Value*> args;
+			return Builder.CreateCall(f, llvm::None, name + "_call");
+		}
+		else
+		{
+			// function expected args but stmt has no args
+			if (!child)
 			{
-				args.push_back(argNode->codeGen());
-				argNode = dynamic_cast<ASTNode_Expr *>(argNode->brother);
+				CodeGenLogger.println("Function expects args but not provided: " + name);
+				return nullptr;
 			}
-			return Builder.CreateCall(f, args, "funcall");
+
+			auto argList = dynamic_cast<ASTNode_ArgList*>(child);
+			if (argList->count == f->arg_size())
+			{
+				std::vector<llvm::Value*> args;
+				auto argNode = dynamic_cast<ASTNode_Expr*>(argList->child);
+
+				for (auto& arg : f->args())
+				{
+					if (arg.getType()->isPtrOrPtrVectorTy())
+					{
+						auto v = argNode->codeGen();
+						auto alloca = createEntryBlockAlloca(f, std::string(arg.getName()), arg.getType());
+						Builder.CreateStore(v, alloca);
+						args.push_back(alloca);
+					}
+					else
+					{
+						args.push_back(argNode->codeGen());
+					}
+					argNode = dynamic_cast<ASTNode_Expr*>(argNode->brother);
+				}
+
+				return Builder.CreateCall(f, args, name + "_call");
+			}
+			// function expects args but provided with different number of args
+			CodeGenLogger.println("Function expects " + std::to_string(f->arg_size()) + " args but provided " + std::to_string(argList->count) + ": " + name);
+			return nullptr;
 		}
 	}
 
@@ -327,6 +363,7 @@ llvm::Value *ASTNode_Operator::codeGen()
 	}
 }
 
+
 llvm::Function *ASTNode_FunctionHead::codeGen()
 {
 	llvm::FunctionType *funcType;
@@ -404,26 +441,36 @@ llvm::Function *ASTNode_FunctionDecl::codeGen()
 	auto BB = llvm::BasicBlock::Create(TheContext, funcHead->functionName + "_entry", fun);
 	Builder.SetInsertPoint(BB);
 
-	//TODO
-	// set up variable table
-	GlobalTable.clearVariable();
-	for (auto &arg : fun->args())
-		GlobalTable.insertVariable(std::string(arg.getName()), &arg);
+	// set up a new variable table for this function
+	currentSymbolTable->setupNewTable();
+
+	// setup retval
+	auto alloca = createEntryBlockAlloca(fun, funcHead->functionName, fun->getReturnType());
+	currentSymbolTable->insertVariable(funcHead->functionName, alloca);
+	
+	for (auto& arg : fun->args())
+	{
+		auto alloca = createEntryBlockAlloca(fun, std::string(arg.getName()), arg.getType());
+		Builder.CreateStore(&arg, alloca);
+		currentSymbolTable->insertVariable(std::string(arg.getName()), alloca);
+	}
 
 	auto routine = dynamic_cast<ASTNode_SubRoutine *>(funcHead->brother);
 
-	auto retVal = routine->codeGen(fun);
-	if (retVal)
+	auto genBody = routine->codeGen(fun);
+	if(genBody)
 	{
-		// todo: change retval
+		auto retVal = Builder.CreateLoad(alloca, funcHead->functionName);
 		Builder.CreateRet(retVal);
 		llvm::verifyFunction(*fun);
+		currentSymbolTable->removeCurrentTable();
 		return fun;
 	}
 	else
 	{
 		// revert function generation
 		fun->eraseFromParent();
+		currentSymbolTable->removeCurrentTable();
 		CodeGenLogger.println("Failed to generate function body for " + funcHead->functionName);
 		return nullptr;
 	}
@@ -507,25 +554,37 @@ llvm::Function *ASTNode_ProcedureDecl::codeGen()
 	auto BB = llvm::BasicBlock::Create(TheContext, procHead->procedureName + "_entry", proc);
 	Builder.SetInsertPoint(BB);
 
-	//TODO
 	// set up variable table
-	GlobalTable.clearVariable();
-	for (auto &arg : proc->args())
-		GlobalTable.insertVariable(std::string(arg.getName()), &arg);
+	currentSymbolTable->setupNewTable();
+
+	// setup retval
+	auto alloca = createEntryBlockAlloca(proc, procHead->procedureName, proc->getReturnType());
+	currentSymbolTable->insertVariable(procHead->procedureName, alloca);
+
+	for (auto& arg : proc->args())
+	{
+		auto alloca = createEntryBlockAlloca(proc, std::string(arg.getName()), arg.getType());
+		Builder.CreateStore(&arg, alloca);
+		currentSymbolTable->insertVariable(std::string(arg.getName()), alloca);
+	}
+
 
 	auto routine = dynamic_cast<ASTNode_SubRoutine *>(procHead->brother);
 
-	auto retVal = routine->codeGen(proc);
-	if (retVal)
+	auto genBody = routine->codeGen(proc);
+	if (genBody)
 	{
-		Builder.CreateRetVoid();
+		auto retVal = Builder.CreateLoad(alloca, procHead->procedureName);
+		Builder.CreateRet(retVal);
 		llvm::verifyFunction(*proc);
+		currentSymbolTable->removeCurrentTable();
 		return proc;
 	}
 	else
 	{
-		// revert procedure generation
+		// revert function generation
 		proc->eraseFromParent();
+		currentSymbolTable->removeCurrentTable();
 		CodeGenLogger.println("Failed to generate function body for " + procHead->procedureName);
 		return nullptr;
 	}
@@ -560,9 +619,13 @@ void ASTNode_Routine::scanVarPart(ASTNode *part)
 	while (varDecl)
 	{
 		ASTNode_VarDecl *p = dynamic_cast<ASTNode_VarDecl *>(varDecl);
-		//TODO
-		//for (auto& name : p->list->name_list)
-		//	GlobalTable.insertVariable(name, p->type->codeGen());
+		
+		for (auto& name : p->list->name_list)
+		{
+			llvm::IRBuilder<> builder(Builder.GetInsertBlock(), Builder.GetInsertBlock()->begin());
+			auto alloca = builder.CreateAlloca(p->type->codeGen(), nullptr, name);
+			GlobalTable.insertVariable(std::string(name), alloca);
+		}
 
 		varDecl = varDecl->brother;
 	}
@@ -611,6 +674,9 @@ llvm::Value *ASTNode_Routine::codeGen()
 
 	ASTNode *routineHead = child;
 	ASTNode *headPart = routineHead->child;
+	
+	auto BB = llvm::BasicBlock::Create(TheContext, "entry", genRoutineHead());
+	Builder.SetInsertPoint(BB);
 
 	while (headPart)
 	{
@@ -625,12 +691,14 @@ llvm::Value *ASTNode_Routine::codeGen()
 		headPart = headPart->brother;
 	}
 
-	auto BB = llvm::BasicBlock::Create(TheContext, "main", genRoutineHead());
-	Builder.SetInsertPoint(BB);
 
-	dynamic_cast<ASTNode_StmtCompound *>(routineHead->brother)->codeGen();
-
-	return retValZero;
+	if (dynamic_cast<ASTNode_StmtCompound*>(routineHead->brother)->codeGen())
+		return retValZero;
+	else
+	{
+		CodeGenLogger.println("Main has invalid stmt");
+		return nullptr;
+	}
 }
 
 void ASTNode_SubRoutine::scanConstPart(ASTNode *part)
@@ -662,9 +730,12 @@ void ASTNode_SubRoutine::scanVarPart(ASTNode *part)
 	while (varDecl)
 	{
 		ASTNode_VarDecl *p = dynamic_cast<ASTNode_VarDecl *>(varDecl);
-		//TODO
-		//for (auto& name : p->list->name_list)
-		//	GlobalTable.insertVariable(name, p->type->codeGen());
+		for (auto& name : p->list->name_list)
+		{
+			llvm::IRBuilder<> builder(Builder.GetInsertBlock(),Builder.GetInsertBlock()->begin());
+			auto alloca = builder.CreateAlloca(p->type->codeGen(), nullptr, name);
+			currentSymbolTable->insertVariable(std::string(name), alloca);
+		}
 
 		varDecl = varDecl->brother;
 	}
@@ -719,10 +790,14 @@ llvm::Value *ASTNode_SubRoutine::codeGen(llvm::Function *head)
 
 	auto BB = llvm::BasicBlock::Create(TheContext, head->getName() + "_body", head);
 	Builder.SetInsertPoint(BB);
-
-	dynamic_cast<ASTNode_StmtCompound *>(routineHead->brother)->codeGen();
-
-	return retValZero;
+	
+	if (dynamic_cast<ASTNode_StmtCompound*>(routineHead->brother)->codeGen())
+		return retValZero;
+	else
+	{
+		CodeGenLogger.println("function " + std::string(head->getName()) + "'s body has invalid stmt");
+		return nullptr;
+	}
 }
 
 llvm::Value *ASTNode_StmtIf::codeGen()
@@ -792,7 +867,7 @@ llvm::Value *ASTNode_StmtIf::codeGen()
 	fun->getBasicBlockList().push_back(ifcontBB);
 	Builder.SetInsertPoint(ifcontBB);
 
-	//TODO: type?
+	// stmt returns a bool
 	llvm::PHINode *phiNode =
 		Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "iftmp");
 
@@ -806,7 +881,10 @@ llvm::Value *ASTNode_StmtFor::codeGen()
 	// child 1, start value expr
 	auto startValue = dynamic_cast<ASTNode_Expr *>(child)->codeGen();
 	if (!startValue)
+	{
+		CodeGenLogger.println("For stmt has invalid start value");
 		return nullptr;
+	}
 	// only supports integer as stepping value
 	if (!startValue->getType()->isIntegerTy())
 	{
@@ -822,13 +900,12 @@ llvm::Value *ASTNode_StmtFor::codeGen()
 	Builder.CreateBr(loopBB);
 
 	Builder.SetInsertPoint(loopBB);
-	llvm::PHINode *variable = Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext),
-												2, varName);
-	variable->addIncoming(startValue, prevBB);
-
-	// TODO: review
-	auto shadowedVar = currentSymbolTable->getVariable(varName);
-	currentSymbolTable->insertVariable(varName, variable);
+	
+	// stepping value should be i32
+	auto alloca = createEntryBlockAlloca(fun, varName, llvm::Type::getInt32Ty(TheContext));
+	
+	Builder.CreateStore(startValue, alloca);
+	currentSymbolTable->insertVariable(varName, alloca);
 
 	// child 2, end value expr
 	auto endValue = dynamic_cast<ASTNode_Expr *>(child->brother)->codeGen();
@@ -856,7 +933,9 @@ llvm::Value *ASTNode_StmtFor::codeGen()
 	auto stepping = this->isPositive ? llvm::ConstantInt::get(TheContext, llvm::APInt(32, 1, true))
 									 : llvm::ConstantInt::get(TheContext, llvm::APInt(32, -1, true));
 
-	auto nextVar = Builder.CreateAdd(variable, stepping, "stepping");
+	auto curVal = Builder.CreateLoad(alloca, varName);
+	auto nextVar = Builder.CreateAdd(curVal, stepping, "stepping");
+	Builder.CreateStore(curVal, alloca);
 
 	// if stepping++, check if end value <= stepping
 	// if stepping--, check if end value >= stepping
@@ -869,7 +948,6 @@ llvm::Value *ASTNode_StmtFor::codeGen()
 	Builder.CreateCondBr(loopCond, loopBB, afterBB);
 
 	Builder.SetInsertPoint(afterBB);
-	variable->addIncoming(nextVar, loopEndBB);
 
 	return retValZero;
 }
@@ -1006,14 +1084,25 @@ llvm::Value *ASTNode_StmtProc::codeGen()
 			auto argList = dynamic_cast<ASTNode_ArgList *>(child);
 			if (argList->count == f->arg_size())
 			{
-				//TODO typecheck
-				std::vector<llvm::Value *> args;
-				auto argNode = dynamic_cast<ASTNode_Expr *>(argList->child);
-				while (argNode->brother)
+				std::vector<llvm::Value*> args;
+				auto argNode = dynamic_cast<ASTNode_Expr*>(argList->child);
+
+				for (auto& arg : f->args())
 				{
-					args.push_back(argNode->codeGen());
-					argNode = dynamic_cast<ASTNode_Expr *>(argNode->brother);
+					if (arg.getType()->isPtrOrPtrVectorTy())
+					{
+						auto v = argNode->codeGen();
+						auto alloca = createEntryBlockAlloca(f, std::string(arg.getName()), arg.getType());
+						Builder.CreateStore(v, alloca);
+						args.push_back(alloca);
+					}
+					else
+					{
+						args.push_back(argNode->codeGen());
+					}
+					argNode = dynamic_cast<ASTNode_Expr*>(argNode->brother);
 				}
+
 				return Builder.CreateCall(f, args, procName + "_call");
 			}
 			// function expects args but provided with different number of args
@@ -1027,8 +1116,12 @@ llvm::Value *ASTNode_StmtProc::codeGen()
 
 llvm::Value *ASTNode_StmtAssign::codeGen()
 {
-	//TODO
-	return retValZero;
+	// declaration is done in routine head
+	// TODO: only support single value yet
+	auto alloca = currentSymbolTable->getVariable(lvalueName);
+	auto v = dynamic_cast<ASTNode_Expr*>(this->child)->codeGen();
+	Builder.CreateStore(v, alloca);
+	return v;
 }
 
 llvm::Value *ASTNode_StmtCase::codeGen()
@@ -1101,7 +1194,7 @@ llvm::Value *ASTNode_StmtCase::codeGen()
 			else
 			{
 				// const variable
-				auto v = GlobalTable.getConstant(name);
+				auto v = currentSymbolTable->getConstant(name);
 				if (!v->getType()->isIntegerTy())
 				{
 					CodeGenLogger.println("Case stmt expects integer");
@@ -1206,6 +1299,8 @@ void ASTHandler::scanProgramHead()
 		return;
 
 	auto routine = dynamic_cast<ASTNode_Routine *>(ASTHead->child);
-	routine->codeGen();
-	TheModule->print(llvm::errs(), nullptr);
+	if (routine->codeGen())
+		TheModule->print(llvm::errs(), nullptr);
+	else
+		llvm::errs() << "\nGenerate LLVM IR failed, see codegen.log for information.\n";
 }

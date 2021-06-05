@@ -24,7 +24,12 @@ public:
 	{
 		auto res = constant.find(name);
 		if (res == constant.end())
-			return nullptr;
+		{
+			if (prev)
+				return prev->getConstant(name);
+			else
+				return nullptr;
+		}
 		else return res->second;
 	}
 
@@ -36,7 +41,12 @@ public:
 	{
 		auto res = type.find(name);
 		if (res == type.end())
+		{
+			if (prev)
+				return prev->getType(name);
+			else
 			return nullptr;
+		}
 		else return res->second;
 	}
 
@@ -44,20 +54,17 @@ public:
 	{
 		variable.insert(std::make_pair(name, value));
 	}
-	llvm::Value* getVariable(const std::string& name)
+	llvm::AllocaInst* getVariable(const std::string& name)
 	{
 		auto res = variable.find(name);
 		if (res == variable.end())
-			return nullptr;
+		{
+			if (prev)
+				return prev->getVariable(name);
+			else
+				return nullptr;
+		}
 		else return res->second;
-	}
-	void removeVariable(const std::string &name)
-	{
-		variable.erase(name);
-	}
-	void clearVariable()
-	{
-		variable.clear();
 	}
 	
 
@@ -69,9 +76,18 @@ public:
 	{
 		auto res = function.find(name);
 		if (res == function.end())
-			return nullptr;
+		{
+			if (prev)
+				return prev->getFunction(name);
+			else
+				return nullptr;
+		}
 		else return res->second;
 	}
+
+	static SymbolTable* setupNewTable();
+
+	static SymbolTable* removeCurrentTable();
 };
 
 extern SymbolTable GlobalTable;
