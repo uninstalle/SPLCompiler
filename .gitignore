@@ -8,3 +8,9 @@ x64/
 *.vcxproj.filters
 *.vcxproj.user
 *.sln
+
+# latex temporary file
+*.aux
+*.synctex.gz
+*.log
+*.toc

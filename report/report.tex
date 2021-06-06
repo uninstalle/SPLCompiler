@@ -1,0 +1,147 @@
+\documentclass{article}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{ctex}
+\usepackage{tabularx}
+\usepackage{geometry}
+\usepackage{listings}
+\usepackage{fontspec}
+\usepackage{indentfirst}
+\setlength{\parindent}{2em}
+\geometry{a4paper,left=3cm,right=3cm,top=3.5cm,bottom=3.5cm}
+\lstset{
+    basicstyle={\fontspec{Consolas} \small},
+    breaklines=true,
+    keywordstyle={\color{red} \fontspec{Consolas Bold}},
+    commentstyle={\color[RGB]{30,120,30} \fontspec{Consolas Italic}},
+    tabsize=4
+}
+
+\begin{document}
+
+% cover begin
+
+\thispagestyle{empty}
+\setcounter{page}{-1}
+
+\begin{center}
+    \includegraphics[width=0.5\paperwidth]{logo.png}
+\end{center}
+
+\vskip 20pt
+
+\begin{center}
+    \zihao{3}
+    \textbf{本科实验报告}
+\end{center}
+
+
+\vskip 120pt
+
+    \begin{center}
+        \bfseries \zihao{-2}
+
+        \begin{tabularx}{.7\textwidth}{>{\fangsong}l >{\fangsong}X<{\centering}}
+            课程名称 & \uline{\hfill 编译原理 \hfill} \\
+            姓名 &  \uline{\hfill \hfill} \\
+            学院 &  \uline{\hfill \hfill} \\
+            系 &  \uline{\hfill \hfill} \\
+            专业 &  \uline{\hfill \hfill} \\
+            学号 &  \uline{\hfill \hfill} \\
+            指导教师 &  \uline{\hfill \hfill} \\
+            ~ & ~\\
+        \end{tabularx}
+    \end{center}
+
+\vskip 100pt
+
+\begin{center}
+    \zihao{3} \fangsong
+    \today
+\end{center}
+
+% cover end
+
+
+\newpage
+
+\thispagestyle{empty}
+
+\zihao{4}
+\tableofcontents
+
+\newpage
+
+\zihao{-4}
+
+
+\section*{序言}
+\addcontentsline{toc}{section}{序言}
+
+\subsection*{概述}
+\addcontentsline{toc}{subsection}{概述}
+\par paragraph 1 paragraph 1 paragraph 1 paragraph 1 paragraph 1 paragraph 1 paragraph 1 paragraph 1 paragraph 1 paragraph 1 paragraph 1 
+\par paragraph 2
+
+\subsection*{编译环境}
+\addcontentsline{toc}{subsection}{编译环境}
+
+\subsection*{文件结构}
+\addcontentsline{toc}{subsection}{文件结构}
+
+\subsection*{分工说明}
+\addcontentsline{toc}{subsection}{分工说明}
+
+\subsection*{总览}
+\addcontentsline{toc}{subsection}{总览}
+
+\begin{table}[H]
+    \begin{tabular}{|l|l|l|}
+        \hline
+        \textbf{Compiler Component}    & \textbf{Status} & \textbf{Details} \\ \hline
+        Scanning                       &                 &                  \\ \hline
+        Parsing                        &                 &                  \\ \hline
+        Semantic Analysis              &                 &                  \\ \hline
+        Intermediate Code Generation   &                 &                  \\ \hline
+        Intermediate Code Optimization &                 &                  \\ \hline
+        Target Code Generation         &                 &                  \\ \hline
+        Target Code Optimization       &                 &                  \\ \hline
+        Other Optimization             &                 &                  \\ \hline
+        Runtime Environment            &                 &                  \\ \hline
+        Symbol Table                   &                 &                  \\ \hline
+    \end{tabular}
+\end{table}
+
+\section{词法分析}
+\subsection{正则表达式}
+\subsection{实现原理和方法}
+
+\section{语法分析}
+\subsection{上下文无关语法}
+\subsection{实现原理和方法}
+
+\section{语义分析}
+\subsection{实现方法}
+
+\section{优化考虑}
+\subsection{xxx阶段优化}
+
+\section{代码生成}
+\subsection{assign}
+\begin{lstlisting}[language=c++,showstringspaces=false]
+    int main()
+    {
+        // comment
+        return 0;
+    }
+\end{lstlisting}
+
+\section{测试案例}
+\subsection{单句测试}
+\subsection{组合测试}
+
+
+
+
+\end{document}
