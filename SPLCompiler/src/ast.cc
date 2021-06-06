@@ -537,22 +537,22 @@ llvm::Function *ASTNode_FunctionDecl::codeGen()
 
 	// setup retval
 	auto retName = funcHead->functionName;
-	auto alloca = createEntryBlockAlloca(fun, retName, fun->getReturnType());
-	currentSymbolTable->insertVariable(retName, alloca);
+	auto retVar = createEntryBlockAlloca(fun, retName, fun->getReturnType());
+	currentSymbolTable->insertVariable(retName, retVar);
 
 	for (auto &arg : fun->args())
 	{
 		if (arg.getType()->isPointerTy())
 		{
 			// ref arg
-			currentSymbolTable->insertVariable(std::string(arg.getName()), reinterpret_cast<llvm::AllocaInst *>(&arg));
+			currentSymbolTable->insertVariable(std::string(arg.getName()), &arg);
 		}
 		else
 		{
 			// val arg
-			auto alloca = createEntryBlockAlloca(fun, std::string(arg.getName()), arg.getType());
-			Builder.CreateStore(&arg, alloca);
-			currentSymbolTable->insertVariable(std::string(arg.getName()), alloca);
+			auto localVar = createEntryBlockAlloca(fun, std::string(arg.getName()), arg.getType());
+			Builder.CreateStore(&arg, localVar);
+			currentSymbolTable->insertVariable(std::string(arg.getName()), localVar);
 		}
 	}
 
@@ -561,7 +561,7 @@ llvm::Function *ASTNode_FunctionDecl::codeGen()
 	auto genBody = routine->codeGen(fun);
 	if (genBody)
 	{
-		auto retVal = Builder.CreateLoad(alloca, retName);
+		auto retVal = Builder.CreateLoad(retVar, retName);
 		Builder.CreateRet(retVal);
 		llvm::verifyFunction(*fun);
 		TheFPM->run(*fun);
@@ -664,22 +664,22 @@ llvm::Function *ASTNode_ProcedureDecl::codeGen()
 
 	// setup retval
 	auto retName = procHead->procedureName + "_ret";
-	auto alloca = createEntryBlockAlloca(proc, retName, proc->getReturnType());
-	currentSymbolTable->insertVariable(retName, alloca);
+	auto retVar = createEntryBlockAlloca(proc, retName, proc->getReturnType());
+	currentSymbolTable->insertVariable(retName, retVar);
 
 	for (auto &arg : proc->args())
 	{
 		if (arg.getType()->isPointerTy())
 		{
 			// ref arg
-			currentSymbolTable->insertVariable(std::string(arg.getName()), reinterpret_cast<llvm::AllocaInst *>(&arg));
+			currentSymbolTable->insertVariable(std::string(arg.getName()), &arg);
 		}
 		else
 		{
 			// val arg
-			auto alloca = createEntryBlockAlloca(proc, std::string(arg.getName()), arg.getType());
-			Builder.CreateStore(&arg, alloca);
-			currentSymbolTable->insertVariable(std::string(arg.getName()), alloca);
+			auto localVar = createEntryBlockAlloca(proc, std::string(arg.getName()), arg.getType());
+			Builder.CreateStore(&arg, localVar);
+			currentSymbolTable->insertVariable(std::string(arg.getName()), localVar);
 		}
 	}
 
@@ -688,7 +688,7 @@ llvm::Function *ASTNode_ProcedureDecl::codeGen()
 	auto genBody = routine->codeGen(proc);
 	if (genBody)
 	{
-		auto retVal = Builder.CreateLoad(alloca, retName);
+		auto retVal = Builder.CreateLoad(retVar, retName);
 		Builder.CreateRet(retVal);
 		llvm::verifyFunction(*proc);
 		TheFPM->run(*proc);
@@ -964,33 +964,23 @@ llvm::Value *ASTNode_StmtIf::codeGen()
 
 	Builder.CreateBr(ifcontBB);
 
-	// update thenBB since then clause may change the current block, used by PHI
-	thenBB = Builder.GetInsertBlock();
-
 	// attach else BB to the function
 	fun->getBasicBlockList().push_back(elseBB);
 	Builder.SetInsertPoint(elseBB);
 
 	// child 3, else expr
-	llvm::Value *elseV;
 	if (child->brother->brother)
 	{
 		// with else clause
-		elseV = dynamic_cast<ASTNode_Stmt *>(child->brother->brother)->codeGen();
+		auto elseV = dynamic_cast<ASTNode_Stmt *>(child->brother->brother)->codeGen();
 		if (!elseV)
 		{
 			CodeGenLogger.println("If stmt has invalid else stmt");
 			return nullptr;
 		}
 	}
-	else
-		// without else clause, empty else BB
-		elseV = llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
 
 	Builder.CreateBr(ifcontBB);
-
-	// update elseBB since else clause may change the current block, used by PHI
-	elseBB = Builder.GetInsertBlock();
 
 	// attach ifcont BB to the function
 	fun->getBasicBlockList().push_back(ifcontBB);
@@ -1024,10 +1014,10 @@ llvm::Value *ASTNode_StmtFor::codeGen()
 	Builder.SetInsertPoint(loopBB);
 
 	// stepping value should be i32
-	auto alloca = createEntryBlockAlloca(fun, varName, llvm::Type::getInt32Ty(TheContext));
+	auto stepVar = createEntryBlockAlloca(fun, varName, llvm::Type::getInt32Ty(TheContext));
 
-	Builder.CreateStore(startValue, alloca);
-	currentSymbolTable->insertVariable(varName, alloca);
+	Builder.CreateStore(startValue, stepVar);
+	currentSymbolTable->insertVariable(varName, stepVar);
 
 	// child 2, end value expr
 	auto endValue = dynamic_cast<ASTNode_Expr *>(child->brother)->codeGen();
@@ -1055,9 +1045,9 @@ llvm::Value *ASTNode_StmtFor::codeGen()
 	auto stepping = this->isPositive ? llvm::ConstantInt::get(TheContext, llvm::APInt(32, 1, true))
 									 : llvm::ConstantInt::get(TheContext, llvm::APInt(32, -1, true));
 
-	auto curVal = Builder.CreateLoad(alloca, varName);
+	auto curVal = Builder.CreateLoad(stepVar, varName);
 	auto nextVar = Builder.CreateAdd(curVal, stepping, "stepping");
-	Builder.CreateStore(curVal, alloca);
+	Builder.CreateStore(curVal, stepVar);
 
 	// if stepping++, check if end value <= stepping
 	// if stepping--, check if end value >= stepping
@@ -1371,13 +1361,13 @@ llvm::Value *ASTNode_StmtAssign::codeGen()
 {
 	// declaration is done in routine head
 	// TODO: only support single value yet
-	auto alloca = currentSymbolTable->getVariable(lvalueName);
-	if (!alloca)
+	auto var = currentSymbolTable->getVariable(lvalueName);
+	if (!var)
 	{
 		CodeGenLogger.println("Unresolved variable: " + lvalueName);
 	}
 	auto v = dynamic_cast<ASTNode_Expr *>(child)->codeGen();
-	Builder.CreateStore(v, alloca);
+	Builder.CreateStore(v, var);
 	return v;
 }
 
