@@ -1195,7 +1195,9 @@ llvm::Value *sysProcWrite(ASTNode_StmtProc *node, bool isLn = false)
 	if (!proc)
 	{
 		// not declared yet, declare it
-		auto funcType = llvm::FunctionType::get(llvm::IntegerType::get(TheContext, 32), true);
+		std::vector<llvm::Type *> args;
+		args.push_back(llvm::Type::getInt8PtrTy(TheContext));
+		auto funcType = llvm::FunctionType::get(llvm::IntegerType::get(TheContext, 32), args, true);
 
 		proc = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "printf", TheModule.get());
 		proc->setCallingConv(llvm::CallingConv::C);
@@ -1243,7 +1245,9 @@ llvm::Value *sysProcRead(ASTNode_StmtProc *node)
 	if (!proc)
 	{
 		// not declared yet, declare it
-		auto funcType = llvm::FunctionType::get(llvm::IntegerType::get(TheContext, 32), true);
+		std::vector<llvm::Type*> args;
+		args.push_back(llvm::Type::getInt8PtrTy(TheContext));
+		auto funcType = llvm::FunctionType::get(llvm::IntegerType::get(TheContext, 32), args, true);
 
 		proc = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "scanf", TheModule.get());
 		proc->setCallingConv(llvm::CallingConv::C);
@@ -1257,7 +1261,17 @@ llvm::Value *sysProcRead(ASTNode_StmtProc *node)
 
 	while (arg)
 	{
-		auto v = arg->codeGen();
+		// reference para
+		// in the case, since ref must be lvalue, we expect that argNode is an operand node of OperandType::Variable.
+		// TODO:  add array support
+		auto node = dynamic_cast<ASTNode_Operand*>(arg);
+		if (!node)
+		{
+			CodeGenLogger.println("Function expects var para but provided with constant: read");
+			return nullptr;
+		}
+		auto v = currentSymbolTable->getVariable(node->name);
+		
 		if (v->getType()->getPointerElementType()->isDoubleTy())
 			format += "%lf";
 		if (v->getType()->getPointerElementType()->isIntegerTy())

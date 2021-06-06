@@ -1,0 +1,30 @@
+program hello;
+var
+	i : integer;
+	r : real;
+	c : char;
+begin
+	read(i);
+	writeln(abs(i));
+
+	read(i);
+	writeln(chr(i));
+
+	c := 'm';
+	writeln(ord(c));
+
+	read(i);
+	writeln(odd(i));
+
+	read(i);
+	writeln(pred(i));
+	writeln(succ(i));
+	writeln(sqr(i));
+
+	read(r);
+	writeln(sqrt(r));
+end
+.
+
+
+
