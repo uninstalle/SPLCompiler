@@ -3,13 +3,15 @@ var
 	a : integer;
 
 begin
-	if (1=2) then
+	a := 1;
+	
+	if (a = 2) then
 	begin
-		a := 1;
+		a := 2;
 	end
 	else
 	begin
-		if (2=2) then
+		if (a = 1) then
 		begin
 			a := 1;
 		end
@@ -20,6 +22,24 @@ begin
 		;
 	end
 	;
+
+	repeat
+	a := a + 1;
+	until a = 5;
+
+	while a > 1
+	do a := a - 1;
+
+	for i := 1 to 5
+	do a := a + 1;
+
+	case a of
+	1: a := 2;
+	2: a := 3;
+	3: a := 4;
+	else a := 5;
+	end;
+
 end
 .
 

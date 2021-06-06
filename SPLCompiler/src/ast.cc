@@ -20,7 +20,7 @@ const std::string ASTNode_Operator::OperatorString[] = {
 	"&",
 	"!",
 	"|",
-	
+
 	"."};
 
 static llvm::LLVMContext TheContext;
@@ -30,7 +30,7 @@ static std::unique_ptr<llvm::Module> TheModule;
 static ASTNode *ASTHead = nullptr;
 
 // used for return 0
-static auto retValZero = llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
+static auto RetValZero = llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
 
 // create an IR statement in the beginning of given function, which creating a variable of given type with given name
 llvm::AllocaInst *createEntryBlockAlloca(llvm::Function *fun,
@@ -131,74 +131,87 @@ llvm::Type *ASTNode_RecordType::codeGen(bool isRef)
 
 llvm::Value *ASTNode_Operand::codeGen()
 {
-	// TODO: add a operand type indicator in yacc, then we don't need to test what it is
-
-	// literal constant
-	if (name == "const")
+	if (type == OperandType::Literal)
 		return dynamic_cast<ASTNode_Const *>(child)->codeGen();
 
-	// const variable
-	auto c = currentSymbolTable->getConstant(name);
-	if (c)
-		return c;
-
-	// mutable variable
-	auto v = currentSymbolTable->getVariable(name);
-	if (v)
-		return Builder.CreateLoad(v, name);
-
-	// function
-	auto f = TheModule->getFunction(name);
-	if (f)
+	if (type == OperandType::Variable)
 	{
-		// function without args
-		if (f->arg_size() == 0)
-		{
-			std::vector<llvm::Value *> args;
-			return Builder.CreateCall(f, llvm::None, name + "_call");
-		}
-		else
-		{
-			// function expected args but stmt has no args
-			if (!child)
-			{
-				CodeGenLogger.println("Function expects args but not provided: " + name);
-				return nullptr;
-			}
-
-			auto argList = dynamic_cast<ASTNode_ArgList *>(child);
-			if (argList->count == f->arg_size())
-			{
-				std::vector<llvm::Value *> args;
-				auto argNode = dynamic_cast<ASTNode_Expr *>(argList->child);
-
-				// TODO: type check
-
-				for (auto &arg : f->args())
-				{
-					if (arg.getType()->isPointerTy())
-					{
-						auto v = argNode->codeGen();
-						auto alloca = createEntryBlockAlloca(f, std::string(arg.getName()), arg.getType());
-						Builder.CreateStore(v, alloca);
-						args.push_back(alloca);
-					}
-					else
-					{
-						args.push_back(argNode->codeGen());
-					}
-					argNode = dynamic_cast<ASTNode_Expr *>(argNode->brother);
-				}
-
-				return Builder.CreateCall(f, args, name + "_call");
-			}
-			// function expects args but provided with different number of args
-			CodeGenLogger.println("Function expects " + std::to_string(f->arg_size()) + " args but provided " + std::to_string(argList->count) + ": " + name);
-			return nullptr;
-		}
+		// constant
+		auto c = currentSymbolTable->getConstant(name);
+		if (c)
+			return c;
+		// variable
+		auto v = currentSymbolTable->getVariable(name);
+		if (v)
+			return Builder.CreateLoad(v, name);
+		// not found
+		CodeGenLogger.println("Variable not found: " + name);
+		return nullptr;
 	}
 
-	CodeGenLogger.println("Unrecognized expression " + name);
+	if (type == OperandType::Function)
+	{
+		auto fun = TheModule->getFunction(name);
+		if (fun)
+		{
+			// function without args
+			if (fun->arg_size() == 0)
+			{
+				std::vector<llvm::Value *> args;
+				return Builder.CreateCall(fun, llvm::None, name + "_call");
+			}
+			else
+			{
+				// function expected args but stmt has no args
+				if (!child)
+				{
+					CodeGenLogger.println("Function expects args but not provided: " + name);
+					return nullptr;
+				}
+
+				auto argList = dynamic_cast<ASTNode_ArgList *>(child);
+				if (argList->count == fun->arg_size())
+				{
+					std::vector<llvm::Value *> args;
+					auto argNode = dynamic_cast<ASTNode_Expr *>(argList->child);
+
+					// TODO: type check
+
+					for (auto &arg : fun->args())
+					{
+						if (arg.getType()->isPointerTy())
+						{
+							auto v = argNode->codeGen();
+							auto alloca = createEntryBlockAlloca(fun, std::string(arg.getName()), arg.getType());
+							Builder.CreateStore(v, alloca);
+							args.push_back(alloca);
+						}
+						else
+						{
+							args.push_back(argNode->codeGen());
+						}
+						argNode = dynamic_cast<ASTNode_Expr *>(argNode->brother);
+					}
+
+					return Builder.CreateCall(fun, args, name + "_call");
+				}
+				// function expects args but provided with different number of args
+				CodeGenLogger.println("Function expects " + std::to_string(fun->arg_size()) + " args but provided " + std::to_string(argList->count) + ": " + name);
+				return nullptr;
+			}
+		}
+		CodeGenLogger.println("Unrecognized expression " + name);
+		return nullptr;
+	}
+
+	if (type == OperandType::ArrayElement)
+		// TODO
+		return nullptr;
+
+	if (type == OperandType::RecordMember)
+		// TODO
+		return nullptr;
+
 	return nullptr;
 }
 
@@ -246,39 +259,39 @@ llvm::Value *ASTNode_Operator::codeGen()
 		if (L->getType()->isIntegerTy())
 		{
 			// unary int
-			switch (op)
+			switch (type)
 			{
-			case OPERATOR::MINUS:
+			case OperatorType::MINUS:
 				// -L = 0 - L
 				return Builder.CreateSub(llvm::ConstantInt::get(TheContext, llvm::APInt(L->getType()->getIntegerBitWidth(), 0)), L, "intuminus");
 
-			case OPERATOR::NOT:
+			case OperatorType::NOT:
 				return Builder.CreateNot(L, "intnot");
 
 			default:
-				CodeGenLogger.println("Invalid int unary operator" + stringOf(op));
+				CodeGenLogger.println("Invalid int unary operator" + stringOf(type));
 				return nullptr;
 			}
 		}
 		else if (L->getType()->isDoubleTy())
 		{
 			// unary float
-			switch (op)
+			switch (type)
 			{
-			case OPERATOR::MINUS:
+			case OperatorType::MINUS:
 				return Builder.CreateFNeg(L, "fpfneg");
 
-			case OPERATOR::NOT:
+			case OperatorType::NOT:
 				return Builder.CreateNot(L, "fpnot");
 
 			default:
-				CodeGenLogger.println("Invalid float unary operator" + stringOf(op));
+				CodeGenLogger.println("Invalid float unary operator" + stringOf(type));
 				return nullptr;
 			}
 		}
 		else
 		{
-			CodeGenLogger.println("Invalid unary operator " + stringOf(op));
+			CodeGenLogger.println("Invalid unary operator " + stringOf(type));
 			return nullptr;
 		}
 	}
@@ -289,84 +302,84 @@ llvm::Value *ASTNode_Operator::codeGen()
 		if (L->getType()->isIntegerTy() && R->getType()->isIntegerTy())
 		{
 			// binary int
-			switch (op)
+			switch (type)
 			{
-			case OPERATOR::PLUS:
+			case OperatorType::PLUS:
 				return Builder.CreateAdd(L, R, "intadd");
-			case OPERATOR::MINUS:
+			case OperatorType::MINUS:
 				return Builder.CreateSub(L, R, "intsub");
-			case OPERATOR::MUL:
+			case OperatorType::MUL:
 				return Builder.CreateMul(L, R, "intmul");
-			case OPERATOR::DIV:
+			case OperatorType::DIV:
 				return Builder.CreateSDiv(L, R, "intdiv");
-			case OPERATOR::MOD:
+			case OperatorType::MOD:
 				return Builder.CreateSRem(L, R, "intdiv");
 
-			case OPERATOR::GE:
+			case OperatorType::GE:
 				return Builder.CreateICmpSGE(L, R, "intcmpge");
-			case OPERATOR::GT:
+			case OperatorType::GT:
 				return Builder.CreateICmpSGT(L, R, "intcmpgt");
-			case OPERATOR::LE:
+			case OperatorType::LE:
 				return Builder.CreateICmpSLE(L, R, "intcmple");
-			case OPERATOR::LT:
+			case OperatorType::LT:
 				return Builder.CreateICmpSLT(L, R, "intcmplt");
-			case OPERATOR::EQUAL:
+			case OperatorType::EQUAL:
 				return Builder.CreateICmpEQ(L, R, "intcmpeq");
-			case OPERATOR::UNEQUAL:
+			case OperatorType::UNEQUAL:
 				return Builder.CreateICmpNE(L, R, "intcmpne");
 
-			case OPERATOR::AND:
+			case OperatorType::AND:
 				return Builder.CreateAnd(L, R, "intand");
-			case OPERATOR::OR:
+			case OperatorType::OR:
 				return Builder.CreateOr(L, R, "intor");
 
 			default:
-				CodeGenLogger.println("Invalid int binary operator" + stringOf(op));
+				CodeGenLogger.println("Invalid int binary operator" + stringOf(type));
 				return nullptr;
 			}
 		}
 		else if (L->getType()->isDoubleTy() && R->getType()->isDoubleTy())
 		{
 			// binary float
-			switch (op)
+			switch (type)
 			{
-			case OPERATOR::PLUS:
+			case OperatorType::PLUS:
 				return Builder.CreateFAdd(L, R, "fpadd");
-			case OPERATOR::MINUS:
+			case OperatorType::MINUS:
 				return Builder.CreateFSub(L, R, "fpsub");
-			case OPERATOR::MUL:
+			case OperatorType::MUL:
 				return Builder.CreateFMul(L, R, "fpmul");
-			case OPERATOR::DIV:
+			case OperatorType::DIV:
 				return Builder.CreateFDiv(L, R, "fpdiv");
-			case OPERATOR::MOD:
+			case OperatorType::MOD:
 				return Builder.CreateFRem(L, R, "fpdiv");
 
-			case OPERATOR::GE:
+			case OperatorType::GE:
 				return Builder.CreateFCmpUGE(L, R, "fpcmpge");
-			case OPERATOR::GT:
+			case OperatorType::GT:
 				return Builder.CreateFCmpUGT(L, R, "fpcmpgt");
-			case OPERATOR::LE:
+			case OperatorType::LE:
 				return Builder.CreateFCmpULE(L, R, "fpcmple");
-			case OPERATOR::LT:
+			case OperatorType::LT:
 				return Builder.CreateFCmpULT(L, R, "fpcmplt");
-			case OPERATOR::EQUAL:
+			case OperatorType::EQUAL:
 				return Builder.CreateFCmpUEQ(L, R, "fpcmpeq");
-			case OPERATOR::UNEQUAL:
+			case OperatorType::UNEQUAL:
 				return Builder.CreateFCmpUNE(L, R, "fpcmpne");
 
-			case OPERATOR::AND:
+			case OperatorType::AND:
 				return Builder.CreateAnd(L, R, "fpand");
-			case OPERATOR::OR:
+			case OperatorType::OR:
 				return Builder.CreateOr(L, R, "fpor");
 
 			default:
-				CodeGenLogger.println("Invalid float binary operator" + stringOf(op));
+				CodeGenLogger.println("Invalid float binary operator" + stringOf(type));
 				return nullptr;
 			}
 		}
 		else
 		{
-			CodeGenLogger.println("Invalid binary operator " + stringOf(op));
+			CodeGenLogger.println("Invalid binary operator " + stringOf(type));
 			return nullptr;
 		}
 	}
@@ -462,10 +475,10 @@ llvm::Function *ASTNode_FunctionDecl::codeGen()
 
 	for (auto &arg : fun->args())
 	{
-		if(arg.getType()->isPointerTy())
+		if (arg.getType()->isPointerTy())
 		{
 			// ref arg
-			currentSymbolTable->insertVariable(std::string(arg.getName()), reinterpret_cast<llvm::AllocaInst*>(&arg));
+			currentSymbolTable->insertVariable(std::string(arg.getName()), reinterpret_cast<llvm::AllocaInst *>(&arg));
 		}
 		else
 		{
@@ -591,7 +604,7 @@ llvm::Function *ASTNode_ProcedureDecl::codeGen()
 		if (arg.getType()->isPointerTy())
 		{
 			// ref arg
-			currentSymbolTable->insertVariable(std::string(arg.getName()), reinterpret_cast<llvm::AllocaInst*>(&arg));
+			currentSymbolTable->insertVariable(std::string(arg.getName()), reinterpret_cast<llvm::AllocaInst *>(&arg));
 		}
 		else
 		{
@@ -727,7 +740,7 @@ llvm::Value *ASTNode_Routine::codeGen()
 	// Routine Part will change insert point
 	Builder.SetInsertPoint(BB);
 	if (dynamic_cast<ASTNode_StmtCompound *>(routineHead->brother)->codeGen())
-		return retValZero;
+		return RetValZero;
 	else
 	{
 		CodeGenLogger.println("Main has invalid stmt");
@@ -827,7 +840,7 @@ llvm::Value *ASTNode_SubRoutine::codeGen(llvm::Function *head)
 	Builder.SetInsertPoint(&head->getEntryBlock());
 
 	if (dynamic_cast<ASTNode_StmtCompound *>(routineHead->brother)->codeGen())
-		return retValZero;
+		return RetValZero;
 	else
 	{
 		CodeGenLogger.println("function " + std::string(head->getName()) + "'s body has invalid stmt");
@@ -986,7 +999,7 @@ llvm::Value *ASTNode_StmtFor::codeGen()
 
 	Builder.SetInsertPoint(afterBB);
 
-	return retValZero;
+	return RetValZero;
 }
 
 llvm::Value *ASTNode_StmtCompound::codeGen()
@@ -996,7 +1009,7 @@ llvm::Value *ASTNode_StmtCompound::codeGen()
 
 	// empty code block, return
 	if (!stmt)
-		return retValZero;
+		return RetValZero;
 
 	while (stmt)
 	{
@@ -1013,7 +1026,7 @@ llvm::Value *ASTNode_StmtCompound::codeGen()
 		stmt = stmt->brother;
 	}
 
-	return retValZero;
+	return RetValZero;
 }
 
 llvm::Value *ASTNode_StmtRepeat::codeGen()
@@ -1027,7 +1040,7 @@ llvm::Value *ASTNode_StmtRepeat::codeGen()
 	Builder.SetInsertPoint(loopBB);
 
 	// child 1, loop body stmtList
-	auto stmtList = dynamic_cast<ASTNode_Stmt *>(child);
+	auto stmtList = dynamic_cast<ASTNode_StmtList *>(child);
 	auto stmt = stmtList->child;
 	while (stmt)
 	{
@@ -1041,15 +1054,15 @@ llvm::Value *ASTNode_StmtRepeat::codeGen()
 	}
 
 	// child 2, end cond until
-	auto endValue = dynamic_cast<ASTNode_Expr *>(child->brother)->codeGen();
-	if (!endValue)
+	auto curVal = dynamic_cast<ASTNode_Expr *>(child->brother)->codeGen();
+	if (!curVal)
 	{
 		CodeGenLogger.println("Repeat stmt has invalid end expression");
 		return nullptr;
 	}
 
 	// if end value == false, loopCond = true
-	auto loopCond = Builder.CreateICmpEQ(endValue, llvm::ConstantInt::get(TheContext, llvm::APInt(endValue->getType()->getIntegerBitWidth(), 0)), "repeatloopcond");
+	auto loopCond = Builder.CreateICmpEQ(curVal, llvm::ConstantInt::get(TheContext, llvm::APInt(curVal->getType()->getIntegerBitWidth(), 0)), "repeatloopcond");
 
 	llvm::BasicBlock *afterBB = llvm::BasicBlock::Create(TheContext, "afterrepeatloop", fun);
 
@@ -1057,7 +1070,7 @@ llvm::Value *ASTNode_StmtRepeat::codeGen()
 
 	Builder.SetInsertPoint(afterBB);
 
-	return retValZero;
+	return RetValZero;
 }
 
 llvm::Value *ASTNode_StmtWhile::codeGen()
@@ -1065,18 +1078,28 @@ llvm::Value *ASTNode_StmtWhile::codeGen()
 	// get current function that the while stmt belonged to
 	auto fun = Builder.GetInsertBlock()->getParent();
 	auto loopBB = llvm::BasicBlock::Create(TheContext, "whileloop", fun);
+	auto bodyBB = llvm::BasicBlock::Create(TheContext, "whileloopbody");
+	llvm::BasicBlock *afterBB = llvm::BasicBlock::Create(TheContext, "afterwhileloop");
 
 	Builder.CreateBr(loopBB);
 
 	Builder.SetInsertPoint(loopBB);
 
 	// child 1, end cond
-	auto endValue = dynamic_cast<ASTNode_Expr *>(child)->codeGen();
-	if (!endValue)
+	auto curVal = dynamic_cast<ASTNode_Expr *>(child)->codeGen();
+	if (!curVal)
 	{
 		CodeGenLogger.println("While stmt has invalid end expression");
 		return nullptr;
 	}
+
+	// if end == false, loopCond = true
+	auto loopCond = Builder.CreateICmpNE(curVal, llvm::ConstantInt::get(TheContext, llvm::APInt(curVal->getType()->getIntegerBitWidth(), 0)), "whileloopcond");
+
+	Builder.CreateCondBr(loopCond, bodyBB, afterBB);
+
+	fun->getBasicBlockList().push_back(bodyBB);
+	Builder.SetInsertPoint(bodyBB);
 
 	// child 2, loop body stmt
 	auto body = dynamic_cast<ASTNode_Stmt *>(child->brother)->codeGen();
@@ -1086,52 +1109,48 @@ llvm::Value *ASTNode_StmtWhile::codeGen()
 		return nullptr;
 	}
 
-	// if end == false, loopCond = true
-	auto loopCond = Builder.CreateICmpNE(endValue, llvm::ConstantInt::get(TheContext, llvm::APInt(endValue->getType()->getIntegerBitWidth(), 0)), "whileloopcond");
+	Builder.CreateBr(loopBB);
 
-	llvm::BasicBlock *afterBB = llvm::BasicBlock::Create(TheContext, "afterwhileloop", fun);
-
-	Builder.CreateCondBr(loopCond, loopBB, afterBB);
-
+	fun->getBasicBlockList().push_back(afterBB);
 	Builder.SetInsertPoint(afterBB);
 
-	return retValZero;
+	return RetValZero;
 }
 
 llvm::Value *ASTNode_StmtProc::codeGen()
 {
-	auto f = TheModule->getFunction(procName);
-	if (f)
+	auto proc = TheModule->getFunction(procName);
+	if (proc)
 	{
 		// function without args
-		if (f->arg_size() == 0)
+		if (proc->arg_size() == 0)
 		{
 			std::vector<llvm::Value *> args;
-			return Builder.CreateCall(f, llvm::None, procName + "_call");
+			return Builder.CreateCall(proc, llvm::None, procName + "_call");
 		}
 		else
 		{
 			// function expected args but stmt has no args
 			if (!child)
 			{
-				CodeGenLogger.println("Function expects args but not provided: " + procName);
+				CodeGenLogger.println("Procedure expects args but not provided: " + procName);
 				return nullptr;
 			}
 
 			auto argList = dynamic_cast<ASTNode_ArgList *>(child);
-			if (argList->count == f->arg_size())
+			if (argList->count == proc->arg_size())
 			{
 				std::vector<llvm::Value *> args;
 				auto argNode = dynamic_cast<ASTNode_Expr *>(argList->child);
 
 				// TODO: type check
 
-				for (auto &arg : f->args())
+				for (auto &arg : proc->args())
 				{
 					if (arg.getType()->isPointerTy())
 					{
 						auto v = argNode->codeGen();
-						auto alloca = createEntryBlockAlloca(f, std::string(arg.getName()), arg.getType());
+						auto alloca = createEntryBlockAlloca(proc, std::string(arg.getName()), arg.getType());
 						Builder.CreateStore(v, alloca);
 						args.push_back(alloca);
 					}
@@ -1141,15 +1160,16 @@ llvm::Value *ASTNode_StmtProc::codeGen()
 					}
 					argNode = dynamic_cast<ASTNode_Expr *>(argNode->brother);
 				}
-
-				return Builder.CreateCall(f, args, procName + "_call");
+				Builder.CreateCall(proc, args, procName + "_call");
+				// procedure doesn't have return value
+				return RetValZero;
 			}
 			// function expects args but provided with different number of args
-			CodeGenLogger.println("Function expects " + std::to_string(f->arg_size()) + " args but provided " + std::to_string(argList->count) + ": " + procName);
+			CodeGenLogger.println("Procedure expects " + std::to_string(proc->arg_size()) + " args but provided " + std::to_string(argList->count) + ": " + procName);
 			return nullptr;
 		}
 	}
-	CodeGenLogger.println("Function not found in symbol table: " + procName);
+	CodeGenLogger.println("Procedure not found in symbol table: " + procName);
 	return nullptr;
 }
 
@@ -1178,22 +1198,24 @@ llvm::Value *ASTNode_StmtCase::codeGen()
 		return nullptr;
 	}
 
-	// child 2, then expr
+	// child 2, case expr list
 	auto caseExprList = child->brother;
 	auto caseExpr = caseExprList->child;
 
 	int caseCount = 0;
 	std::vector<std::pair<llvm::Constant *, llvm::BasicBlock *>> cases;
+	auto fun = Builder.GetInsertBlock()->getParent();
 
 	// create an empty case BB
-	auto createCaseBB = []
+	auto createCaseBB = [fun]
 	{
-		auto fun = Builder.GetInsertBlock()->getParent();
 		auto caseBB = llvm::BasicBlock::Create(TheContext, "case", fun);
 		return caseBB;
 	};
 
 	ASTNode *defaultCaseStmt = nullptr;
+
+	auto sw = Builder.CreateSwitch(condV, nullptr, caseCount);
 
 	while (caseExpr)
 	{
@@ -1201,59 +1223,60 @@ llvm::Value *ASTNode_StmtCase::codeGen()
 		auto caseVar = caseExpr->child;
 		auto caseStmt = caseVar->brother;
 
-		if (caseVar->getType() == ASTNodeType::Const)
+		if (caseVar->getType() == ASTNodeType::ConstInteger ||
+			caseVar->getType() == ASTNodeType::ConstCharacter ||
+			caseVar->getType() == ASTNodeType::ConstBoolean)
 		{
 			// const literal
 			auto v = dynamic_cast<ASTNode_Const *>(caseVar)->codeGen();
-			if (!v->getType()->isIntegerTy())
-			{
-				CodeGenLogger.println("Case stmt expects integer");
-				return nullptr;
-			}
 
 			auto bb = createCaseBB();
 			Builder.SetInsertPoint(bb);
 			auto caseV = dynamic_cast<ASTNode_Stmt *>(caseStmt)->codeGen();
 			if (!caseV)
 			{
-				CodeGenLogger.println("case has invalid stmt");
+				CodeGenLogger.println("case clause has invalid stmt");
 				return nullptr;
 			}
 			cases.emplace_back(std::make_pair(v, bb));
 		}
 		else if (caseVar->getType() == ASTNodeType::Name)
 		{
-			// const variable or "else" as a default marker
 			auto name = dynamic_cast<ASTNode_Name *>(caseVar)->name;
-			if (name == "else")
+			// const variable
+			auto v = currentSymbolTable->getConstant(name);
+			if (!v)
 			{
-				// default
-				defaultCaseStmt = caseStmt;
+				CodeGenLogger.println("Case clause const variable not found");
 			}
-			else
+			if (!v->getType()->isIntegerTy())
 			{
-				// const variable
-				auto v = currentSymbolTable->getConstant(name);
-				if (!v->getType()->isIntegerTy())
-				{
-					CodeGenLogger.println("Case stmt expects integer");
-					return nullptr;
-				}
-				auto bb = createCaseBB();
-				Builder.SetInsertPoint(bb);
-				auto caseV = dynamic_cast<ASTNode_Stmt *>(caseStmt)->codeGen();
-				if (!caseV)
-				{
-					CodeGenLogger.println("case has invalid stmt");
-					return nullptr;
-				}
-				cases.emplace_back(std::make_pair(v, bb));
+				CodeGenLogger.println("Case clause expects integer");
+				return nullptr;
 			}
+			auto bb = createCaseBB();
+			Builder.SetInsertPoint(bb);
+			auto caseV = dynamic_cast<ASTNode_Stmt *>(caseStmt)->codeGen();
+			if (!caseV)
+			{
+				CodeGenLogger.println("case clause has invalid stmt");
+				return nullptr;
+			}
+			cases.emplace_back(std::make_pair(v, bb));
+		}
+		else if (!caseStmt)
+		{
+			// only one child node, default branch, child 1 is stmt
+			defaultCaseStmt = caseVar;
+		}
+		else
+		{
+			CodeGenLogger.println("case clause has invalid expr");
+			return nullptr;
 		}
 		caseExpr = caseExpr->brother;
 	}
 
-	auto fun = Builder.GetInsertBlock()->getParent();
 	auto defaultBB = llvm::BasicBlock::Create(TheContext, "default", fun);
 	Builder.SetInsertPoint(defaultBB);
 	if (defaultCaseStmt)
@@ -1266,14 +1289,13 @@ llvm::Value *ASTNode_StmtCase::codeGen()
 		}
 	}
 
-	auto sw = Builder.CreateSwitch(condV, defaultBB, caseCount);
-
 	for (auto &c : cases)
 		sw->addCase(reinterpret_cast<llvm::ConstantInt *>(c.first), c.second);
+	sw->setDefaultDest(defaultBB);
 
 	Builder.SetInsertPoint(defaultBB);
 
-	return retValZero;
+	return RetValZero;
 }
 
 llvm::Value *ASTNode_StmtGoto::codeGen()
@@ -1295,7 +1317,7 @@ llvm::Value *ASTNode_StmtGoto::codeGen()
 	if (gotoBB)
 	{
 		Builder.CreateBr(gotoBB);
-		return retValZero;
+		return RetValZero;
 	}
 	else
 	{

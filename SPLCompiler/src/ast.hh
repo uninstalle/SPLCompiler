@@ -1197,7 +1197,7 @@ public:
 class ASTNode_Operator : public ASTNode_Expr
 {
 public:
-	enum class OPERATOR
+	enum class OperatorType
 	{
 		GE,
 		GT,
@@ -1223,15 +1223,15 @@ public:
 private:
 	static const std::string OperatorString[15];
 
-	OPERATOR op;
+	OperatorType type;
 
-	static const std::string &stringOf(OPERATOR op)
+	static const std::string &stringOf(OperatorType type)
 	{
-		return OperatorString[static_cast<int>(op)];
+		return OperatorString[static_cast<int>(type)];
 	}
 
 public:
-	ASTNode_Operator(OPERATOR op) : op(op) {}
+	ASTNode_Operator(OperatorType type) : type(type) {}
 
 	llvm::Value *codeGen() override;
 
@@ -1242,20 +1242,29 @@ public:
 
 	void print() override
 	{
-		YaccLogger.println("Operator " + stringOf(op));
+		YaccLogger.println("Operator " + stringOf(type));
 	}
 };
 
 class ASTNode_Operand : public ASTNode_Expr
 {
-	std::string name;
-
 public:
+	enum class OperandType
+	{
+		Literal,
+		Variable,
+		Function,
+		ArrayElement,
+		RecordMember
+	};
+	std::string name;
+	OperandType type;
+
 	ASTNode_Operand() = default;
 
-	ASTNode_Operand(std::string name) : name(std::move(name)) {}
+	ASTNode_Operand(std::string name, OperandType type) : name(std::move(name)), type(type) {}
 
-	ASTNode_Operand(ASTNode_Name *pNode) : name(std::move(pNode->name)) { delete pNode; }
+	ASTNode_Operand(ASTNode_Name *pNode, OperandType type) : name(std::move(pNode->name)), type(type) { delete pNode; }
 
 	llvm::Value *codeGen() override;
 
