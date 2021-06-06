@@ -213,8 +213,8 @@ OP_SEMI
 %type <node_expr> expr
 %type <node_expr> term
 %type <node_expr> factor
-%type <node_expr_list> expression_list
 %type <node_arg_list> args_list
+%type <node_arg_list> args
 
 // fix s/r conflict of routine_part
 %precedence EMPTY_ROUTINE_PART
@@ -694,17 +694,11 @@ assign_stmt:
     ;
 
 proc_stmt:
-    NAME {
-        $$ = new ASTNode_StmtProc($1);
-    }
     | NAME OP_LP args_list OP_RP {
         $$ = new ASTNode_StmtProc($1);
         $$->append($3);
     }
-    | sys_proc {
-        $$ = new ASTNode_StmtProc($1);
-    }
-    | sys_proc OP_LP expression_list OP_RP {
+    | sys_proc OP_LP args_list OP_RP {
         $$ = new ASTNode_StmtProc($1);
         $$->append($3);
     }
@@ -804,17 +798,6 @@ goto_stmt:
     }
     ;
 
-expression_list:
-    expression_list OP_COMMA expression {
-        $$ = $1;
-        $$->append($3);
-    }
-    | expression {
-        $$ = new ASTNode_ExprList();
-        $$->append($1);
-    }
-    ;
-
 expression:
     expression OP_GE expr {
         $$ = new ASTNode_Operator(ASTNode_Operator::OPERATOR::GE);
@@ -906,9 +889,6 @@ factor:
         $$ = new ASTNode_Operand($1);
         $$->append($3);
     }
-    | sys_funct {
-        $$ = new ASTNode_Operand($1);
-    }
     | sys_funct OP_LP args_list OP_RP {
         $$ = new ASTNode_Operand($1);
         $$->append($3);
@@ -940,6 +920,15 @@ factor:
     ;
 
 args_list:
+    args {
+        $$ = $1;
+    }
+    | %empty {
+        $$ = new ASTNode_ArgList();
+    }
+    ;
+
+args:
     args_list OP_COMMA expression {
         $$ = $1;
         $$->append($3);

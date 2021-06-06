@@ -1194,20 +1194,6 @@ public:
 	}
 };
 
-class ASTNode_ExprList : public ASTNode
-{
-public:
-	ASTNodeType getType() override
-	{
-		return ASTNodeType::ExprList;
-	}
-
-	void print() override
-	{
-		YaccLogger.println("ExprList");
-	}
-};
-
 class ASTNode_Operator : public ASTNode_Expr
 {
 public:

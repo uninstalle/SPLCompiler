@@ -10,14 +10,17 @@ const std::string ASTNode_Operator::OperatorString[] = {
 	"<",
 	"=",
 	"<>",
+
 	"+",
 	"-",
-	"|",
 	"*",
 	"/",
+	"%",
+
 	"&",
 	"!",
-	"-",
+	"|",
+	
 	"."};
 
 static llvm::LLVMContext TheContext;
@@ -173,7 +176,7 @@ llvm::Value *ASTNode_Operand::codeGen()
 
 				for (auto &arg : f->args())
 				{
-					if (arg.getType()->isPtrOrPtrVectorTy())
+					if (arg.getType()->isPointerTy())
 					{
 						auto v = argNode->codeGen();
 						auto alloca = createEntryBlockAlloca(f, std::string(arg.getName()), arg.getType());
@@ -459,9 +462,18 @@ llvm::Function *ASTNode_FunctionDecl::codeGen()
 
 	for (auto &arg : fun->args())
 	{
-		auto alloca = createEntryBlockAlloca(fun, std::string(arg.getName()), arg.getType());
-		Builder.CreateStore(&arg, alloca);
-		currentSymbolTable->insertVariable(std::string(arg.getName()), alloca);
+		if(arg.getType()->isPointerTy())
+		{
+			// ref arg
+			currentSymbolTable->insertVariable(std::string(arg.getName()), reinterpret_cast<llvm::AllocaInst*>(&arg));
+		}
+		else
+		{
+			// val arg
+			auto alloca = createEntryBlockAlloca(fun, std::string(arg.getName()), arg.getType());
+			Builder.CreateStore(&arg, alloca);
+			currentSymbolTable->insertVariable(std::string(arg.getName()), alloca);
+		}
 	}
 
 	auto routine = dynamic_cast<ASTNode_SubRoutine *>(funcHead->brother);
@@ -576,9 +588,18 @@ llvm::Function *ASTNode_ProcedureDecl::codeGen()
 
 	for (auto &arg : proc->args())
 	{
-		auto alloca = createEntryBlockAlloca(proc, std::string(arg.getName()), arg.getType());
-		Builder.CreateStore(&arg, alloca);
-		currentSymbolTable->insertVariable(std::string(arg.getName()), alloca);
+		if (arg.getType()->isPointerTy())
+		{
+			// ref arg
+			currentSymbolTable->insertVariable(std::string(arg.getName()), reinterpret_cast<llvm::AllocaInst*>(&arg));
+		}
+		else
+		{
+			// val arg
+			auto alloca = createEntryBlockAlloca(proc, std::string(arg.getName()), arg.getType());
+			Builder.CreateStore(&arg, alloca);
+			currentSymbolTable->insertVariable(std::string(arg.getName()), alloca);
+		}
 	}
 
 	auto routine = dynamic_cast<ASTNode_SubRoutine *>(procHead->brother);
@@ -890,7 +911,7 @@ llvm::Value *ASTNode_StmtIf::codeGen()
 
 	phiNode->addIncoming(thenV, thenBB);
 	phiNode->addIncoming(elseV, elseBB);
-
+	// TODO: review, do we really need to return a phi node?
 	return phiNode;
 }
 
@@ -1107,7 +1128,7 @@ llvm::Value *ASTNode_StmtProc::codeGen()
 
 				for (auto &arg : f->args())
 				{
-					if (arg.getType()->isPtrOrPtrVectorTy())
+					if (arg.getType()->isPointerTy())
 					{
 						auto v = argNode->codeGen();
 						auto alloca = createEntryBlockAlloca(f, std::string(arg.getName()), arg.getType());
