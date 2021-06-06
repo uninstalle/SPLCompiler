@@ -1215,9 +1215,7 @@ public:
 
 		AND,
 		OR,
-		NOT,
-
-		DOT
+		NOT
 	};
 
 private:

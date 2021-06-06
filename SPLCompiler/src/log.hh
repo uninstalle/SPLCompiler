@@ -7,10 +7,10 @@ class Logger
     std::ofstream out;
 
 public:
-    Logger(const std::string& logPath) : out(std::ofstream(logPath))
+    Logger(const std::string &logPath) : out(std::ofstream(logPath))
     {
     }
-    Logger &print(const std::string& text)
+    Logger &print(const std::string &text)
     {
         out << text;
         return *this;
@@ -20,7 +20,7 @@ public:
         out << text;
         return *this;
     }
-    Logger &println(const std::string& text)
+    Logger &println(const std::string &text)
     {
         out << text << std::endl;
         return *this;

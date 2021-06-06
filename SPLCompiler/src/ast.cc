@@ -21,12 +21,11 @@ const std::string ASTNode_Operator::OperatorString[] = {
 	"*",
 	"/",
 	"%",
+	"-",
 
 	"&",
-	"!",
 	"|",
-
-	"."};
+	"!"};
 
 static llvm::LLVMContext TheContext;
 static llvm::IRBuilder<> Builder(TheContext);
@@ -267,7 +266,7 @@ llvm::Value *ASTNode_Operator::codeGen()
 			// unary int
 			switch (type)
 			{
-			case OperatorType::MINUS:
+			case OperatorType::UMINUS:
 				// -L = 0 - L
 				return Builder.CreateSub(llvm::ConstantInt::get(TheContext, llvm::APInt(L->getType()->getIntegerBitWidth(), 0)), L, "intuminus");
 
@@ -275,7 +274,7 @@ llvm::Value *ASTNode_Operator::codeGen()
 				return Builder.CreateNot(L, "intnot");
 
 			default:
-				CodeGenLogger.println("Invalid int unary operator" + stringOf(type));
+				CodeGenLogger.println("Invalid int unary operator " + stringOf(type));
 				return nullptr;
 			}
 		}
@@ -284,14 +283,14 @@ llvm::Value *ASTNode_Operator::codeGen()
 			// unary float
 			switch (type)
 			{
-			case OperatorType::MINUS:
+			case OperatorType::UMINUS:
 				return Builder.CreateFNeg(L, "fpfneg");
 
 			case OperatorType::NOT:
 				return Builder.CreateNot(L, "fpnot");
 
 			default:
-				CodeGenLogger.println("Invalid float unary operator" + stringOf(type));
+				CodeGenLogger.println("Invalid float unary operator " + stringOf(type));
 				return nullptr;
 			}
 		}

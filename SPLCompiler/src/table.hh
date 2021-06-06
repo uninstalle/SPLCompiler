@@ -6,21 +6,19 @@
 
 class SymbolTable
 {
-	std::map<std::string, llvm::Constant*> constant;
-	std::map<std::string, llvm::Type*> type;
-	std::map<std::string, llvm::AllocaInst*> variable;
-	std::map<std::string, llvm::Function*> function;
+	std::map<std::string, llvm::Constant *> constant;
+	std::map<std::string, llvm::Type *> type;
+	std::map<std::string, llvm::AllocaInst *> variable;
+	std::map<std::string, llvm::Function *> function;
 
-	SymbolTable* prev = nullptr;
+	SymbolTable *prev = nullptr;
 
 public:
-
-
-	void insertConstant(const std::string& name, llvm::Constant* value)
+	void insertConstant(const std::string &name, llvm::Constant *value)
 	{
 		constant.insert(std::make_pair(name, value));
 	}
-	llvm::Constant* getConstant(const std::string& name)
+	llvm::Constant *getConstant(const std::string &name)
 	{
 		auto res = constant.find(name);
 		if (res == constant.end())
@@ -30,14 +28,15 @@ public:
 			else
 				return nullptr;
 		}
-		else return res->second;
+		else
+			return res->second;
 	}
 
-	void insertType(const std::string& name, llvm::Type* value)
+	void insertType(const std::string &name, llvm::Type *value)
 	{
 		type.insert(std::make_pair(name, value));
 	}
-	llvm::Type* getType(const std::string& name)
+	llvm::Type *getType(const std::string &name)
 	{
 		auto res = type.find(name);
 		if (res == type.end())
@@ -45,16 +44,17 @@ public:
 			if (prev)
 				return prev->getType(name);
 			else
-			return nullptr;
+				return nullptr;
 		}
-		else return res->second;
+		else
+			return res->second;
 	}
 
-	void insertVariable(const std::string& name, llvm::AllocaInst* value)
+	void insertVariable(const std::string &name, llvm::AllocaInst *value)
 	{
 		variable.insert(std::make_pair(name, value));
 	}
-	llvm::AllocaInst* getVariable(const std::string& name)
+	llvm::AllocaInst *getVariable(const std::string &name)
 	{
 		auto res = variable.find(name);
 		if (res == variable.end())
@@ -64,15 +64,15 @@ public:
 			else
 				return nullptr;
 		}
-		else return res->second;
+		else
+			return res->second;
 	}
-	
 
-	void insertFunction(const std::string& name, llvm::Function* value)
+	void insertFunction(const std::string &name, llvm::Function *value)
 	{
 		function.insert(std::make_pair(name, value));
 	}
-	llvm::Function* getFunction(const std::string& name)
+	llvm::Function *getFunction(const std::string &name)
 	{
 		auto res = function.find(name);
 		if (res == function.end())
@@ -82,13 +82,14 @@ public:
 			else
 				return nullptr;
 		}
-		else return res->second;
+		else
+			return res->second;
 	}
 
-	static SymbolTable* setupNewTable();
+	static SymbolTable *setupNewTable();
 
-	static SymbolTable* removeCurrentTable();
+	static SymbolTable *removeCurrentTable();
 };
 
 extern SymbolTable GlobalTable;
-extern SymbolTable* currentSymbolTable;
+extern SymbolTable *currentSymbolTable;

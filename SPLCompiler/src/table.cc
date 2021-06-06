@@ -1,9 +1,9 @@
 #include "table.hh"
 
 SymbolTable GlobalTable;
-SymbolTable* currentSymbolTable = &GlobalTable;
+SymbolTable *currentSymbolTable = &GlobalTable;
 
-SymbolTable* SymbolTable::setupNewTable()
+SymbolTable *SymbolTable::setupNewTable()
 {
 	auto t = new SymbolTable;
 	t->prev = currentSymbolTable;
@@ -11,7 +11,7 @@ SymbolTable* SymbolTable::setupNewTable()
 	return t;
 }
 
-SymbolTable* SymbolTable::removeCurrentTable()
+SymbolTable *SymbolTable::removeCurrentTable()
 {
 	auto t = currentSymbolTable;
 	currentSymbolTable = currentSymbolTable->prev;
