@@ -3,6 +3,11 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Verifier.h>
 
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Scalar/GVN.h>
+
 const std::string ASTNode_Operator::OperatorString[] = {
 	">=",
 	">",
@@ -26,6 +31,7 @@ const std::string ASTNode_Operator::OperatorString[] = {
 static llvm::LLVMContext TheContext;
 static llvm::IRBuilder<> Builder(TheContext);
 static std::unique_ptr<llvm::Module> TheModule;
+static std::unique_ptr<llvm::legacy::FunctionPassManager> TheFPM;
 
 static ASTNode *ASTHead = nullptr;
 
@@ -497,6 +503,7 @@ llvm::Function *ASTNode_FunctionDecl::codeGen()
 		auto retVal = Builder.CreateLoad(alloca, retName);
 		Builder.CreateRet(retVal);
 		llvm::verifyFunction(*fun);
+		TheFPM->run(*fun);
 		currentSymbolTable->removeCurrentTable();
 		return fun;
 	}
@@ -623,6 +630,7 @@ llvm::Function *ASTNode_ProcedureDecl::codeGen()
 		auto retVal = Builder.CreateLoad(alloca, retName);
 		Builder.CreateRet(retVal);
 		llvm::verifyFunction(*proc);
+		TheFPM->run(*proc);
 		currentSymbolTable->removeCurrentTable();
 		return proc;
 	}
@@ -700,7 +708,7 @@ void ASTNode_Routine::scanRoutinePart(ASTNode *part)
 
 llvm::Function *ASTNode_Routine::genRoutineHead()
 {
-	llvm::FunctionType *funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(TheContext), false);
+	llvm::FunctionType *funcType = llvm::FunctionType::get(llvm::Type::getInt32Ty(TheContext), false);
 
 	auto fun = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "main", TheModule.get());
 
@@ -721,7 +729,9 @@ llvm::Value *ASTNode_Routine::codeGen()
 	ASTNode *routineHead = child;
 	ASTNode *headPart = routineHead->child;
 
-	auto BB = llvm::BasicBlock::Create(TheContext, "entry", genRoutineHead());
+	auto mainFun = genRoutineHead();
+
+	auto BB = llvm::BasicBlock::Create(TheContext, "entry", mainFun);
 	Builder.SetInsertPoint(BB);
 
 	while (headPart)
@@ -740,7 +750,12 @@ llvm::Value *ASTNode_Routine::codeGen()
 	// Routine Part will change insert point
 	Builder.SetInsertPoint(BB);
 	if (dynamic_cast<ASTNode_StmtCompound *>(routineHead->brother)->codeGen())
+	{
+		Builder.CreateRet(llvm::Constant::getNullValue(llvm::Type::getInt32Ty(TheContext)));
+		llvm::verifyFunction(*mainFun);
+		TheFPM->run(*mainFun);
 		return RetValZero;
+	}
 	else
 	{
 		CodeGenLogger.println("Main has invalid stmt");
@@ -1216,6 +1231,7 @@ llvm::Value *ASTNode_StmtCase::codeGen()
 	ASTNode *defaultCaseStmt = nullptr;
 
 	auto sw = Builder.CreateSwitch(condV, nullptr, caseCount);
+	auto endBB = llvm::BasicBlock::Create(TheContext, "endcase");
 
 	while (caseExpr)
 	{
@@ -1238,6 +1254,7 @@ llvm::Value *ASTNode_StmtCase::codeGen()
 				CodeGenLogger.println("case clause has invalid stmt");
 				return nullptr;
 			}
+			Builder.CreateBr(endBB);
 			cases.emplace_back(std::make_pair(v, bb));
 		}
 		else if (caseVar->getType() == ASTNodeType::Name)
@@ -1262,6 +1279,7 @@ llvm::Value *ASTNode_StmtCase::codeGen()
 				CodeGenLogger.println("case clause has invalid stmt");
 				return nullptr;
 			}
+			Builder.CreateBr(endBB);
 			cases.emplace_back(std::make_pair(v, bb));
 		}
 		else if (!caseStmt)
@@ -1287,13 +1305,15 @@ llvm::Value *ASTNode_StmtCase::codeGen()
 			CodeGenLogger.println("case has invalid stmt");
 			return nullptr;
 		}
+		Builder.CreateBr(endBB);
 	}
 
 	for (auto &c : cases)
 		sw->addCase(reinterpret_cast<llvm::ConstantInt *>(c.first), c.second);
 	sw->setDefaultDest(defaultBB);
 
-	Builder.SetInsertPoint(defaultBB);
+	fun->getBasicBlockList().push_back(endBB);
+	Builder.SetInsertPoint(endBB);
 
 	return RetValZero;
 }
@@ -1363,7 +1383,10 @@ void ASTHandler::scanProgramHead()
 
 	auto routine = dynamic_cast<ASTNode_Routine *>(ASTHead->child);
 	if (routine->codeGen())
+	{
 		TheModule->print(llvm::errs(), nullptr);
+		printIR();
+	}
 	else
 		llvm::errs() << "\nGenerate LLVM IR failed, see codegen.log for information.\n";
 }
@@ -1371,4 +1394,22 @@ void ASTHandler::scanProgramHead()
 void ASTHandler::initializeIRBuilder(const std::string &programName)
 {
 	TheModule = std::make_unique<llvm::Module>(programName, TheContext);
+
+	TheFPM = std::make_unique<llvm::legacy::FunctionPassManager>(TheModule.get());
+
+	TheFPM->add(llvm::createInstructionCombiningPass());
+	TheFPM->add(llvm::createReassociatePass());
+	TheFPM->add(llvm::createGVNPass());
+	TheFPM->add(llvm::createCFGSimplificationPass());
+	TheFPM->doInitialization();
+}
+
+void ASTHandler::printIR()
+{
+	std::error_code errcode;
+	llvm::raw_fd_ostream os("out.ll", errcode);
+
+	TheModule->print(os, nullptr);
+
+	os.close();
 }

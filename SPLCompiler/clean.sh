@@ -6,3 +6,6 @@ rm ./bin/main
 rm lex.log
 rm yacc.log
 rm codegen.log
+rm out.ll
+rm out.bc
+rm out.s
