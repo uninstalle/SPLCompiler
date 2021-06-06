@@ -1,7 +1,6 @@
 #pragma once
 #include <map>
 #include <string>
-#include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Instructions.h>
 
 class SymbolTable

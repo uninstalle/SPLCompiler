@@ -26,8 +26,8 @@ int main(int args, char **argv)
         yyparse();
     }
 
-    ASTHandler::print();
-    ASTHandler::scanProgramHead();
+    ASTHandler::printAST();
+    ASTHandler::codeGen();
 
     return 0;
 }

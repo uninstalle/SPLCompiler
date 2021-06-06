@@ -134,6 +134,59 @@ llvm::Type *ASTNode_RecordType::codeGen(bool isRef)
 	//TODO
 }
 
+llvm::Value *ASTNode_Operand::callSystemFunction()
+{
+	if (!child)
+	{
+		CodeGenLogger.println("Sysfunc expects one arg but not provided: " + name);
+		return nullptr;
+	}
+
+	auto argList = dynamic_cast<ASTNode_ArgList *>(child);
+	// System function is unary
+	if (argList->count == 1)
+	{
+		auto arg = dynamic_cast<ASTNode_Expr *>(argList->child)->codeGen();
+
+		// abs i32 or fp
+		if (name == "abs")
+			return Builder.CreateBinaryIntrinsic(llvm::Intrinsic::abs, arg, llvm::ConstantInt::get(TheContext, llvm::APInt(1, 0, false)), nullptr, "abs");
+		// chr i32 to i8
+		if (name == "chr")
+			return Builder.CreateTrunc(arg, llvm::Type::getInt8Ty(TheContext), "chr");
+		// odd i32 to i1
+		if (name == "odd")
+		{
+			auto res = Builder.CreateURem(arg, llvm::ConstantInt::get(llvm::Type::getInt32Ty(TheContext), 2), "oddtmp");
+			return Builder.CreateTrunc(res, llvm::Type::getInt1Ty(TheContext), "odd");
+		}
+		// ord i8 to i32
+		if (name == "ord")
+			return Builder.CreateZExt(arg, llvm::Type::getInt32Ty(TheContext), "ord");
+		// pred i32 x = x - 1
+		if (name == "pred")
+			return Builder.CreateSub(arg, llvm::ConstantInt::get(arg->getType(), 1, true), "pred");
+		// sqr i32 x = x * x
+		if (name == "sqr")
+			return Builder.CreateMul(arg, arg, "sqr");
+		// sqrt i32 or fp return fp
+		if (name == "sqrt")
+			return Builder.CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, arg);
+		// succ i32 x = x + 1
+		if (name == "succ")
+			return Builder.CreateAdd(arg, llvm::ConstantInt::get(arg->getType(), 1, true), "succ");
+
+		CodeGenLogger.println("Unrecognized system function " + name);
+		return nullptr;
+	}
+	else
+	{
+		// function expects args but provided with different number of args
+		CodeGenLogger.println("Sysfunc expects 1 arg but provided " + std::to_string(argList->count) + ": " + name);
+		return nullptr;
+	}
+}
+
 llvm::Value *ASTNode_Operand::codeGen()
 {
 	if (type == OperandType::Literal)
@@ -208,6 +261,9 @@ llvm::Value *ASTNode_Operand::codeGen()
 		CodeGenLogger.println("Unrecognized expression " + name);
 		return nullptr;
 	}
+
+	if (type == OperandType::SystemFunction)
+		return callSystemFunction();
 
 	if (type == OperandType::ArrayElement)
 		// TODO
@@ -932,14 +988,7 @@ llvm::Value *ASTNode_StmtIf::codeGen()
 	fun->getBasicBlockList().push_back(ifcontBB);
 	Builder.SetInsertPoint(ifcontBB);
 
-	// stmt returns a bool
-	llvm::PHINode *phiNode =
-		Builder.CreatePHI(llvm::Type::getInt1Ty(TheContext), 2, "ifphi");
-
-	phiNode->addIncoming(thenV, thenBB);
-	phiNode->addIncoming(elseV, elseBB);
-	// TODO: review, do we really need to return a phi node?
-	return phiNode;
+	return RetValZero;
 }
 
 llvm::Value *ASTNode_StmtFor::codeGen()
@@ -1131,60 +1180,175 @@ llvm::Value *ASTNode_StmtWhile::codeGen()
 	return RetValZero;
 }
 
+llvm::Value *sysProcWrite(ASTNode_StmtProc *node, bool isLn = false)
+{
+	auto proc = TheModule->getFunction("printf");
+	if (!proc)
+	{
+		// not declared yet, declare it
+		auto funcType = llvm::FunctionType::get(llvm::IntegerType::get(TheContext, 32), true);
+
+		proc = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "printf", TheModule.get());
+		proc->setCallingConv(llvm::CallingConv::C);
+	}
+
+	auto argList = dynamic_cast<ASTNode_ArgList *>(node->child);
+
+	std::vector<llvm::Value *> args;
+	auto arg = dynamic_cast<ASTNode_Expr *>(argList->child);
+	std::string format = "";
+
+	while (arg)
+	{
+		auto v = arg->codeGen();
+		if (v->getType()->isDoubleTy())
+			format += "%lf";
+		if (v->getType()->isIntegerTy())
+		{
+			if (v->getType()->getIntegerBitWidth() == 32)
+				format += "%d";
+			else if (v->getType()->getIntegerBitWidth() == 8)
+				format += "%c";
+			else if (v->getType()->getIntegerBitWidth() == 1)
+				format += "%u";
+		}
+		args.push_back(v);
+
+		arg = dynamic_cast<ASTNode_Expr *>(arg->brother);
+	}
+
+	if (isLn)
+		format += "\n";
+
+	args.insert(args.begin(), Builder.CreateGlobalStringPtr(format));
+
+	Builder.CreateCall(proc, args, node->procName + "_call");
+
+	// procedure doesn't have return value
+	return RetValZero;
+}
+
+llvm::Value *sysProcRead(ASTNode_StmtProc *node)
+{
+	auto proc = TheModule->getFunction("scanf");
+	if (!proc)
+	{
+		// not declared yet, declare it
+		auto funcType = llvm::FunctionType::get(llvm::IntegerType::get(TheContext, 32), true);
+
+		proc = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "scanf", TheModule.get());
+		proc->setCallingConv(llvm::CallingConv::C);
+	}
+
+	auto argList = dynamic_cast<ASTNode_ArgList *>(node->child);
+
+	std::vector<llvm::Value *> args;
+	auto arg = dynamic_cast<ASTNode_Expr *>(argList->child);
+	std::string format = "";
+
+	while (arg)
+	{
+		auto v = arg->codeGen();
+		if (v->getType()->getPointerElementType()->isDoubleTy())
+			format += "%lf";
+		if (v->getType()->getPointerElementType()->isIntegerTy())
+		{
+			if (v->getType()->getPointerElementType()->getIntegerBitWidth() == 32)
+				format += "%d";
+			else if (v->getType()->getPointerElementType()->getIntegerBitWidth() == 8)
+				format += "%c";
+			else if (v->getType()->getPointerElementType()->getIntegerBitWidth() == 1)
+				format += "%u";
+		}
+		args.push_back(v);
+
+		arg = dynamic_cast<ASTNode_Expr *>(arg->brother);
+	}
+
+	args.insert(args.begin(), Builder.CreateGlobalStringPtr(format));
+
+	Builder.CreateCall(proc, args, node->procName + "_call");
+
+	// procedure doesn't have return value
+	return RetValZero;
+}
+
+llvm::Value *callSystemProcedure(ASTNode_StmtProc *node)
+{
+	// function expected args but stmt has no args
+	if (!node->child)
+	{
+		CodeGenLogger.println("SysProc expects args but not provided: " + node->procName);
+		return nullptr;
+	}
+
+	if (node->procName == "write")
+		return sysProcWrite(node);
+	if (node->procName == "writeln")
+		return sysProcWrite(node, true);
+	if (node->procName == "read")
+		return sysProcRead(node);
+}
+
 llvm::Value *ASTNode_StmtProc::codeGen()
 {
-	auto proc = TheModule->getFunction(procName);
-	if (proc)
+	if (isSysProc)
+		return callSystemProcedure(this);
+	else
 	{
-		// function without args
-		if (proc->arg_size() == 0)
+		auto proc = TheModule->getFunction(procName);
+		if (proc)
 		{
-			std::vector<llvm::Value *> args;
-			return Builder.CreateCall(proc, llvm::None, procName + "_call");
-		}
-		else
-		{
-			// function expected args but stmt has no args
-			if (!child)
-			{
-				CodeGenLogger.println("Procedure expects args but not provided: " + procName);
-				return nullptr;
-			}
-
-			auto argList = dynamic_cast<ASTNode_ArgList *>(child);
-			if (argList->count == proc->arg_size())
+			// function without args
+			if (proc->arg_size() == 0)
 			{
 				std::vector<llvm::Value *> args;
-				auto argNode = dynamic_cast<ASTNode_Expr *>(argList->child);
-
-				// TODO: type check
-
-				for (auto &arg : proc->args())
-				{
-					if (arg.getType()->isPointerTy())
-					{
-						auto v = argNode->codeGen();
-						auto alloca = createEntryBlockAlloca(proc, std::string(arg.getName()), arg.getType());
-						Builder.CreateStore(v, alloca);
-						args.push_back(alloca);
-					}
-					else
-					{
-						args.push_back(argNode->codeGen());
-					}
-					argNode = dynamic_cast<ASTNode_Expr *>(argNode->brother);
-				}
-				Builder.CreateCall(proc, args, procName + "_call");
-				// procedure doesn't have return value
-				return RetValZero;
+				return Builder.CreateCall(proc, llvm::None, procName + "_call");
 			}
-			// function expects args but provided with different number of args
-			CodeGenLogger.println("Procedure expects " + std::to_string(proc->arg_size()) + " args but provided " + std::to_string(argList->count) + ": " + procName);
-			return nullptr;
+			else
+			{
+				// function expected args but stmt has no args
+				if (!child)
+				{
+					CodeGenLogger.println("Procedure expects args but not provided: " + procName);
+					return nullptr;
+				}
+
+				auto argList = dynamic_cast<ASTNode_ArgList *>(child);
+				if (argList->count == proc->arg_size())
+				{
+					std::vector<llvm::Value *> args;
+					auto argNode = dynamic_cast<ASTNode_Expr *>(argList->child);
+
+					// TODO: type check
+
+					for (auto &arg : proc->args())
+					{
+						if (arg.getType()->isPointerTy())
+						{
+							auto v = argNode->codeGen();
+							auto alloca = createEntryBlockAlloca(proc, std::string(arg.getName()), arg.getType());
+							Builder.CreateStore(v, alloca);
+							args.push_back(alloca);
+						}
+						else
+						{
+							args.push_back(argNode->codeGen());
+						}
+						argNode = dynamic_cast<ASTNode_Expr *>(argNode->brother);
+					}
+					Builder.CreateCall(proc, args, procName + "_call");
+					// procedure doesn't have return value
+					return RetValZero;
+				}
+				// function expects args but provided with different number of args
+				CodeGenLogger.println("Procedure expects " + std::to_string(proc->arg_size()) + " args but provided " + std::to_string(argList->count) + ": " + procName);
+				return nullptr;
+			}
 		}
+		CodeGenLogger.println("Procedure not found in symbol table: " + procName);
+		return nullptr;
 	}
-	CodeGenLogger.println("Procedure not found in symbol table: " + procName);
-	return nullptr;
 }
 
 llvm::Value *ASTNode_StmtAssign::codeGen()
@@ -1367,13 +1531,14 @@ void ASTHandler::setASTHead(ASTNode *head)
 	ASTHead = head;
 }
 
-void ASTHandler::print()
+void ASTHandler::printAST()
 {
 	recursivePrint(ASTHead, 0);
 }
 
-void ASTHandler::scanProgramHead()
+void ASTHandler::codeGen()
 {
+
 	// incomplete AST without Routine
 	if (!ASTHead || !ASTHead->child || ASTHead->child->getType() != ASTNode::ASTNodeType::Routine)
 		return;

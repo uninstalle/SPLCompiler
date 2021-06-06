@@ -1026,10 +1026,11 @@ public:
 
 class ASTNode_StmtProc : public ASTNode_Stmt
 {
-	std::string procName;
-
 public:
-	ASTNode_StmtProc(ASTNode_Name *pNode) : procName(std::move(pNode->name)) {}
+	std::string procName;
+	bool isSysProc = false;
+
+	ASTNode_StmtProc(ASTNode_Name *pNode, bool isSysProc) : procName(std::move(pNode->name)), isSysProc(isSysProc) {}
 
 	ASTNodeType getType() override
 	{
@@ -1246,12 +1247,15 @@ public:
 
 class ASTNode_Operand : public ASTNode_Expr
 {
+	llvm::Value *callSystemFunction();
+
 public:
 	enum class OperandType
 	{
 		Literal,
 		Variable,
 		Function,
+		SystemFunction,
 		ArrayElement,
 		RecordMember
 	};
@@ -1304,6 +1308,6 @@ public:
 
 	static void setASTHead(ASTNode *head);
 
-	static void print();
-	static void scanProgramHead();
+	static void printAST();
+	static void codeGen();
 };

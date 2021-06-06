@@ -695,11 +695,11 @@ assign_stmt:
 
 proc_stmt:
     NAME OP_LP args_list OP_RP {
-        $$ = new ASTNode_StmtProc($1);
+        $$ = new ASTNode_StmtProc($1,false);
         $$->append($3);
     }
     | sys_proc OP_LP args_list OP_RP {
-        $$ = new ASTNode_StmtProc($1);
+        $$ = new ASTNode_StmtProc($1,true);
         $$->append($3);
     }
     ;
@@ -890,7 +890,7 @@ factor:
         $$->append($3);
     }
     | sys_funct OP_LP args_list OP_RP {
-        $$ = new ASTNode_Operand($1,ASTNode_Operand::OperandType::Function);
+        $$ = new ASTNode_Operand($1,ASTNode_Operand::OperandType::SystemFunction);
         $$->append($3);
     }
     | const_value {
