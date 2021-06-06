@@ -233,26 +233,36 @@ llvm::Value *ASTNode_Operand::codeGen()
 					std::vector<llvm::Value *> args;
 					auto argNode = dynamic_cast<ASTNode_Expr *>(argList->child);
 
-					// TODO: type check
-
 					for (auto &arg : fun->args())
 					{
 						if (arg.getType()->isPointerTy())
 						{
 							// reference para
-							// in the case, since ref must be lvalue, we expect that argNode is a operand node of type variable.
+							// in the case, since ref must be lvalue, we expect that argNode is an operand node of OperandType::Variable.
 							// TODO:  add array support
-							auto v = dynamic_cast<ASTNode_Operand *>(argNode);
-							if (!v)
+							auto node = dynamic_cast<ASTNode_Operand *>(argNode);
+							if (!node)
 							{
 								CodeGenLogger.println("Function expects var para but provided with constant: " + name);
 								return nullptr;
 							}
-							args.push_back(currentSymbolTable->getVariable(v->name));
+							auto v = currentSymbolTable->getVariable(node->name);
+							if (v->getType()->getPointerElementType() != arg.getType()->getPointerElementType())
+							{
+								CodeGenLogger.println("Function param type mismatched: " + name);
+								return nullptr;
+							}
+							args.push_back(v);
 						}
 						else
 						{
-							args.push_back(argNode->codeGen());
+							auto v = argNode->codeGen();
+							if (v->getType() != arg.getType())
+							{
+								CodeGenLogger.println("Function param type mismatched: " + name);
+								return nullptr;
+							}
+							args.push_back(v);
 						}
 						argNode = dynamic_cast<ASTNode_Expr *>(argNode->brother);
 					}
@@ -566,6 +576,7 @@ llvm::Function *ASTNode_FunctionDecl::codeGen()
 		llvm::verifyFunction(*fun);
 		TheFPM->run(*fun);
 		currentSymbolTable->removeCurrentTable();
+		currentSymbolTable->insertFunction(funcHead->functionName, fun);
 		return fun;
 	}
 	else
@@ -693,6 +704,7 @@ llvm::Function *ASTNode_ProcedureDecl::codeGen()
 		llvm::verifyFunction(*proc);
 		TheFPM->run(*proc);
 		currentSymbolTable->removeCurrentTable();
+		currentSymbolTable->insertFunction(procHead->procedureName, proc);
 		return proc;
 	}
 	else
@@ -750,7 +762,6 @@ void ASTNode_Routine::scanVarPart(ASTNode *part)
 
 void ASTNode_Routine::scanRoutinePart(ASTNode *part)
 {
-	//TODO: add visibility?
 	ASTNode *procDecl = part->child;
 	while (procDecl)
 	{
@@ -1320,26 +1331,36 @@ llvm::Value *ASTNode_StmtProc::codeGen()
 					std::vector<llvm::Value *> args;
 					auto argNode = dynamic_cast<ASTNode_Expr *>(argList->child);
 
-					// TODO: type check
-
 					for (auto &arg : proc->args())
 					{
 						if (arg.getType()->isPointerTy())
 						{
 							// reference para
-							// in the case, since ref must be lvalue, we expect that argNode is a operand node of type variable.
+							// in the case, since ref must be lvalue, we expect that argNode is an operand node of OperandType::Variable.
 							// TODO:  add array support
-							auto v = dynamic_cast<ASTNode_Operand *>(argNode);
-							if (!v)
+							auto node = dynamic_cast<ASTNode_Operand *>(argNode);
+							if (!node)
 							{
 								CodeGenLogger.println("Function expects var para but provided with constant: " + procName);
 								return nullptr;
 							}
-							args.push_back(currentSymbolTable->getVariable(v->name));
+							auto v = currentSymbolTable->getVariable(node->name);
+							if (v->getType()->getPointerElementType() != arg.getType()->getPointerElementType())
+							{
+								CodeGenLogger.println("Function param type mismatched: " + procName);
+								return nullptr;
+							}
+							args.push_back(v);
 						}
 						else
 						{
-							args.push_back(argNode->codeGen());
+							auto v = argNode->codeGen();
+							if (v->getType() != arg.getType())
+							{
+								CodeGenLogger.println("Function param type mismatched: " + procName);
+								return nullptr;
+							}
+							args.push_back(v);
 						}
 						argNode = dynamic_cast<ASTNode_Expr *>(argNode->brother);
 					}
