@@ -7,8 +7,10 @@ class SymbolTable
 {
 	std::map<std::string, llvm::Constant *> constant;
 	std::map<std::string, llvm::Type *> type;
-	std::map<std::string, llvm::AllocaInst *> variable;
+	std::map<std::string, llvm::Value *> variable;
 	std::map<std::string, llvm::Function *> function;
+
+	static std::vector<SymbolTable *> ARStack;
 
 	SymbolTable *prev = nullptr;
 
@@ -49,11 +51,11 @@ public:
 			return res->second;
 	}
 
-	void insertVariable(const std::string &name, llvm::AllocaInst *value)
+	void insertVariable(const std::string &name, llvm::Value *value)
 	{
 		variable.insert(std::make_pair(name, value));
 	}
-	llvm::AllocaInst *getVariable(const std::string &name)
+	llvm::Value *getVariable(const std::string &name)
 	{
 		auto res = variable.find(name);
 		if (res == variable.end())
@@ -88,6 +90,8 @@ public:
 	static SymbolTable *setupNewTable();
 
 	static SymbolTable *removeCurrentTable();
+
+	static void initialize();
 };
 
 extern SymbolTable GlobalTable;

@@ -38,8 +38,7 @@ static ASTNode *ASTHead = nullptr;
 static auto RetValZero = llvm::Constant::getNullValue(llvm::Type::getInt1Ty(TheContext));
 
 // create an IR statement in the beginning of given function, which creating a variable of given type with given name
-llvm::AllocaInst *createEntryBlockAlloca(llvm::Function *fun,
-										 const std::string &varName, llvm::Type *type)
+llvm::AllocaInst *createEntryBlockAlloca(llvm::Function *fun, const std::string &varName, llvm::Type *type)
 {
 	llvm::IRBuilder<> builder(&fun->getEntryBlock(),
 							  fun->getEntryBlock().begin());
@@ -202,6 +201,7 @@ llvm::Value *ASTNode_Operand::codeGen()
 		auto v = currentSymbolTable->getVariable(name);
 		if (v)
 			return Builder.CreateLoad(v, name);
+
 		// not found
 		CodeGenLogger.println("Variable not found: " + name);
 		return nullptr;
@@ -239,10 +239,16 @@ llvm::Value *ASTNode_Operand::codeGen()
 					{
 						if (arg.getType()->isPointerTy())
 						{
-							auto v = argNode->codeGen();
-							auto alloca = createEntryBlockAlloca(fun, std::string(arg.getName()), arg.getType());
-							Builder.CreateStore(v, alloca);
-							args.push_back(alloca);
+							// reference para
+							// in the case, since ref must be lvalue, we expect that argNode is a operand node of type variable.
+							// TODO:  add array support
+							auto v = dynamic_cast<ASTNode_Operand *>(argNode);
+							if (!v)
+							{
+								CodeGenLogger.println("Function expects var para but provided with constant: " + name);
+								return nullptr;
+							}
+							args.push_back(currentSymbolTable->getVariable(v->name));
 						}
 						else
 						{
@@ -706,7 +712,8 @@ void ASTNode_Routine::scanConstPart(ASTNode *part)
 	{
 		auto p = dynamic_cast<ASTNode_ConstExpr *>(constExpr);
 		auto v = p->value->codeGen();
-		GlobalTable.insertConstant(p->constName, v);
+		auto gv = new llvm::GlobalVariable(*TheModule, v->getType(), true, llvm::GlobalValue::InternalLinkage, v, p->constName);
+		GlobalTable.insertConstant(p->constName, gv);
 		constExpr = constExpr->brother;
 	}
 }
@@ -732,8 +739,9 @@ void ASTNode_Routine::scanVarPart(ASTNode *part)
 		auto type = p->type->codeGen();
 		for (auto &name : p->list->name_list)
 		{
-			auto ptr = createEntryBlockAlloca(Builder.GetInsertBlock()->getParent(), name, type);
-			GlobalTable.insertVariable(name, ptr);
+			auto v = llvm::Constant::getNullValue(type);
+			auto gv = new llvm::GlobalVariable(*TheModule, type, false, llvm::GlobalValue::InternalLinkage, v, name);
+			GlobalTable.insertVariable(name, gv);
 		}
 
 		varDecl = varDecl->brother;
@@ -1288,6 +1296,8 @@ llvm::Value *callSystemProcedure(ASTNode_StmtProc *node)
 		return sysProcWrite(node, true);
 	if (node->procName == "read")
 		return sysProcRead(node);
+
+	return nullptr;
 }
 
 llvm::Value *ASTNode_StmtProc::codeGen()
@@ -1326,10 +1336,16 @@ llvm::Value *ASTNode_StmtProc::codeGen()
 					{
 						if (arg.getType()->isPointerTy())
 						{
-							auto v = argNode->codeGen();
-							auto alloca = createEntryBlockAlloca(proc, std::string(arg.getName()), arg.getType());
-							Builder.CreateStore(v, alloca);
-							args.push_back(alloca);
+							// reference para
+							// in the case, since ref must be lvalue, we expect that argNode is a operand node of type variable.
+							// TODO:  add array support
+							auto v = dynamic_cast<ASTNode_Operand *>(argNode);
+							if (!v)
+							{
+								CodeGenLogger.println("Function expects var para but provided with constant: " + procName);
+								return nullptr;
+							}
+							args.push_back(currentSymbolTable->getVariable(v->name));
 						}
 						else
 						{
@@ -1356,6 +1372,10 @@ llvm::Value *ASTNode_StmtAssign::codeGen()
 	// declaration is done in routine head
 	// TODO: only support single value yet
 	auto alloca = currentSymbolTable->getVariable(lvalueName);
+	if (!alloca)
+	{
+		CodeGenLogger.println("Unresolved variable: " + lvalueName);
+	}
 	auto v = dynamic_cast<ASTNode_Expr *>(child)->codeGen();
 	Builder.CreateStore(v, alloca);
 	return v;
@@ -1533,7 +1553,7 @@ void ASTHandler::setASTHead(ASTNode *head)
 
 void ASTHandler::printAST()
 {
-	recursivePrint(ASTHead, 0);
+	SymbolTable::initialize();
 }
 
 void ASTHandler::codeGen()
@@ -1544,6 +1564,7 @@ void ASTHandler::codeGen()
 		return;
 	auto head = dynamic_cast<ASTNode_Program *>(ASTHead);
 	initializeIRBuilder(head->programName);
+	recursivePrint(ASTHead, 0);
 
 	auto routine = dynamic_cast<ASTNode_Routine *>(ASTHead->child);
 	if (routine->codeGen())

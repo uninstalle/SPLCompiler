@@ -9,3 +9,4 @@ rm codegen.log
 rm out.ll
 rm out.bc
 rm out.s
+rm a.out
