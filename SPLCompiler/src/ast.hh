@@ -1303,6 +1303,7 @@ public:
 class ASTHandler
 {
 	static void recursivePrint(ASTNode *head, int depth);
+	static void initializeIRBuilder(const std::string &programName);
 
 public:
 	ASTHandler() = delete;
