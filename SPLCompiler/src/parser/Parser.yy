@@ -1,7 +1,8 @@
 %{
     #include <iostream>
     #include <limits.h>
-    #include "ast.hh"
+    #include "ast/ast.hh"
+    #include "irgen/generator.hh"
     extern int yylex(void);
     void yyerror(const char* s);
 %}
@@ -10,14 +11,13 @@
 {
     class ASTNode* node;
     class ASTNode_Name* node_name;
-    class ASTNode_Program* node_program;
-    class ASTNode_Routine* node_routine;
-    class ASTNode_SubRoutine* node_sub_routine;
-    class ASTNode_RoutineHead* node_routine_head;
-
+    
     class ASTNode_Const* node_const;
     class ASTNode_ConstDecl* node_const_decl;
     class ASTNode_ConstDeclList* node_const_decl_list;
+
+    class ASTNode_Expr* node_expr;
+    class ASTNode_ArgList* node_arg_list;
 
     class ASTNode_Type* node_type;
     class ASTNode_SimpleType* node_simple_type;
@@ -25,28 +25,26 @@
     class ASTNode_RecordType* node_record_type;
     class ASTNode_TypeDecl* node_type_decl;
     class ASTNode_TypeDeclList* node_type_decl_list;
-
-    class ASTNode_NameList* node_name_list;
-
     class ASTNode_FieldDecl* node_field_decl;
     class ASTNode_FieldDeclList* node_field_decl_list;
-
-    class ASTNode_VarDecl* node_var_decl;
-    class ASTNode_VarDeclList* node_var_decl_list;
+    class ASTNode_NameList* node_name_list;
 
     class ASTNode_RoutinePart* node_routine_part;
     class ASTNode_FunctionDecl* node_function_decl;
     class ASTNode_FunctionHead* node_function_head;
     class ASTNode_ProcedureDecl* node_procedure_decl;
     class ASTNode_ProcedureHead* node_procedure_head;
+    
+    class ASTNode_VarDecl* node_var_decl;
+    class ASTNode_VarDeclList* node_var_decl_list;
 
     class ASTNode_ParaDeclList* node_para_decl_list;
     class ASTNode_ParaTypeList* node_para_type_list;
     class ASTNode_VarParaList* node_var_para_list;
     class ASTNode_ValParaList* node_val_para_list;
 
-    class ASTNode_StmtList* node_stmt_list;
     class ASTNode_Stmt* node_stmt;
+    class ASTNode_StmtList* node_stmt_list;
     class ASTNode_StmtAssign* node_stmt_assign;
     class ASTNode_StmtProc* node_stmt_proc;
     class ASTNode_StmtCompound* node_stmt_compound;
@@ -59,8 +57,10 @@
     class ASTNode_CaseExpr* node_case_expr;
     class ASTNode_CaseExprList* node_case_expr_list;
 
-    class ASTNode_Expr* node_expr;
-    class ASTNode_ArgList* node_arg_list;
+    class ASTNode_Program* node_program;
+    class ASTNode_Routine* node_routine;
+    class ASTNode_SubRoutine* node_sub_routine;
+    class ASTNode_RoutineHead* node_routine_head;
 }
 
 %token
@@ -227,9 +227,8 @@ OP_SEMI
 
 program:
     program_head routine OP_DOT {
-        $$ = new ASTNode_Program($1);
+        $$ = new ASTNode_Program($1,$2);
         ASTHandler::setASTHead($$);
-        $$->append($2);
     }
     ;
 
@@ -307,7 +306,7 @@ sys_type:
         $$ = new ASTNode_SimpleTypePlain("real");
     }
     |SYS_STRING {
-        $$ = new ASTNode_ArrayType(new ASTNode_SimpleTypePlain("integer"),new ASTNode_SimpleTypePlain("char"));
+        $$ = new ASTNode_SimpleTypePlain("string");
     }
     ;
     
@@ -349,14 +348,14 @@ const_decl_list:
         $$->append($2);
     }
     | const_decl {
-        $$ = new ASTNode_ConstExprList();
+        $$ = new ASTNode_ConstDeclList();
         $$->append($1);
     }
     ;
 
 const_decl:
     NAME OP_EQUAL const_value OP_SEMI {
-        $$ = new ASTNode_ConstExpr($1,$3);
+        $$ = new ASTNode_ConstDecl($1,$3);
     }
     ;
 
@@ -699,7 +698,7 @@ while_stmt:
 
 for_stmt:
     KW_FOR NAME OP_ASSIGN expression direction expression KW_DO stmt {
-        $$ = new ASTNode_StmtFor($2,$5->get() == "true",$4,$6,$8);
+        $$ = new ASTNode_StmtFor($2,$5->toString() == "true",$4,$6,$8);
     }
     ;
 
@@ -734,10 +733,10 @@ case_expr:
         $$ = new ASTNode_CaseExprLiteral($1,$3);
     }
     | NAME OP_COLON stmt OP_SEMI {
-        $$ = new ASTNode_CaseExpr($1,$3);
+        $$ = new ASTNode_CaseExprConstVar($1,$3);
     }
     | KW_ELSE stmt OP_SEMI {
-        $$ = new ASTNode_CaseExpr($2);
+        $$ = new ASTNode_CaseExprDefault($2);
     }
     ;
 

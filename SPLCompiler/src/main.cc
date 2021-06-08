@@ -1,5 +1,6 @@
 #include "Parser.hh"
-#include "ast.hh"
+#include "ast/ast.hh"
+#include "irgen/generator.hh"
 #include <iostream>
 
 int main(int args, char **argv)

@@ -5,13 +5,13 @@
 
 struct ConstantSymbol
 {
-	llvm::Constant* raw;
+	llvm::Constant *raw;
 
 	bool isGlobal = false;
 
-	ConstantSymbol(llvm::Constant* p) :raw(p) {}
+	ConstantSymbol(llvm::Constant *p) : raw(p) {}
 
-	llvm::Constant* operator->() const
+	llvm::Constant *operator->() const
 	{
 		return raw;
 	}
@@ -19,13 +19,13 @@ struct ConstantSymbol
 
 struct TypeSymbol
 {
-	llvm::Type* raw;
+	llvm::Type *raw;
 
 	bool isGlobal = false;
 
-	TypeSymbol(llvm::Type* p) :raw(p) {}
+	TypeSymbol(llvm::Type *p) : raw(p) {}
 
-	llvm::Type* operator->() const
+	llvm::Type *operator->() const
 	{
 		return raw;
 	}
@@ -33,13 +33,13 @@ struct TypeSymbol
 
 struct VariableSymbol
 {
-	llvm::Value* raw;
+	llvm::Value *raw;
 
 	bool isGlobal = false;
 
-	VariableSymbol(llvm::Value* p) :raw(p) {}
+	VariableSymbol(llvm::Value *p) : raw(p) {}
 
-	llvm::Value* operator->() const
+	llvm::Value *operator->() const
 	{
 		return raw;
 	}
@@ -47,15 +47,15 @@ struct VariableSymbol
 
 struct FunctionSymbol
 {
-	llvm::Function* raw;
+	llvm::Function *raw;
 
 	bool isGlobal = false;
 
 	std::vector<bool> isRefArg;
 
-	FunctionSymbol(llvm::Function* p) : raw(p) {}
+	FunctionSymbol(llvm::Function *p) : raw(p) {}
 
-	llvm::Function* operator->() const
+	llvm::Function *operator->() const
 	{
 		return raw;
 	}
@@ -73,11 +73,11 @@ class SymbolTable
 	std::shared_ptr<SymbolTable> prev = nullptr;
 
 public:
-	void insertConstant(const std::string& name, ConstantSymbol value)
+	void insertConstant(const std::string &name, ConstantSymbol value)
 	{
 		constant.insert(std::make_pair(name, value));
 	}
-	ConstantSymbol getConstant(const std::string& name)
+	ConstantSymbol getConstant(const std::string &name)
 	{
 		auto res = constant.find(name);
 		if (res == constant.end())
@@ -91,11 +91,11 @@ public:
 			return res->second;
 	}
 
-	void insertType(const std::string& name, TypeSymbol value)
+	void insertType(const std::string &name, TypeSymbol value)
 	{
 		type.insert(std::make_pair(name, value));
 	}
-	TypeSymbol getType(const std::string& name)
+	TypeSymbol getType(const std::string &name)
 	{
 		auto res = type.find(name);
 		if (res == type.end())
@@ -109,11 +109,11 @@ public:
 			return res->second;
 	}
 
-	void insertVariable(const std::string& name, VariableSymbol value)
+	void insertVariable(const std::string &name, VariableSymbol value)
 	{
 		variable.insert(std::make_pair(name, value));
 	}
-	VariableSymbol getVariable(const std::string& name)
+	VariableSymbol getVariable(const std::string &name)
 	{
 		auto res = variable.find(name);
 		if (res == variable.end())
@@ -127,11 +127,11 @@ public:
 			return res->second;
 	}
 
-	void insertFunction(const std::string& name, FunctionSymbol value)
+	void insertFunction(const std::string &name, FunctionSymbol value)
 	{
 		function.insert(std::make_pair(name, value));
 	}
-	FunctionSymbol getFunction(const std::string& name)
+	FunctionSymbol getFunction(const std::string &name)
 	{
 		auto res = function.find(name);
 		if (res == function.end())

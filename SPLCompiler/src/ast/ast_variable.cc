@@ -2,22 +2,18 @@
 #include "../irgen/generator.hh"
 #include "../irgen/table.hh"
 
-
-
-llvm::AllocaInst* allocInEntryBlock(llvm::Function* fun, const std::string& varName, llvm::Type* type)
+llvm::AllocaInst *allocInEntryBlock(llvm::Function *fun, const std::string &varName, llvm::Type *type)
 {
 	llvm::IRBuilder<> builder(&fun->getEntryBlock(), fun->getEntryBlock().begin());
 	return builder.CreateAlloca(type, nullptr, varName);
 }
 
-
-llvm::Value* ASTNode_VarDecl::codeGen()
+llvm::Value *ASTNode_VarDecl::codeGen()
 {
-	auto t = type->codeGen();
+	auto t = type->typeGen();
 
 	if (!t)
 		return logAndReturn("Variable declaration has invalid type: " + list->toString());
-
 
 	auto v = llvm::Constant::getNullValue(t);
 
@@ -47,8 +43,7 @@ llvm::Value* ASTNode_VarDecl::codeGen()
 	return v;
 }
 
-
-llvm::Value* ASTNode_VarDeclList::codeGen()
+llvm::Value *ASTNode_VarDeclList::codeGen()
 {
 	for (auto varDecl : children)
 	{
@@ -57,4 +52,3 @@ llvm::Value* ASTNode_VarDeclList::codeGen()
 	}
 	return RetValZero;
 }
-

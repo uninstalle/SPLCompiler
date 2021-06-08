@@ -3,9 +3,7 @@
 #include "../irgen/table.hh"
 #include <llvm/IR/Verifier.h>
 
-
-
-llvm::Value* ASTNode_RoutineHead::codeGen()
+llvm::Value *ASTNode_RoutineHead::codeGen()
 {
 	if (constPart)
 		if (!constPart->codeGen())
@@ -19,12 +17,11 @@ llvm::Value* ASTNode_RoutineHead::codeGen()
 	if (routinePart)
 		if (!routinePart->codeGen())
 			return logAndReturn("Routine part generate failed");
-	
+
 	return RetValZero;
 }
 
-
-llvm::Value* ASTNode_Routine::codeGen()
+llvm::Value *ASTNode_Routine::codeGen()
 {
 	auto main = IRGenBuilder->GetInsertBlock()->getParent();
 
@@ -34,6 +31,7 @@ llvm::Value* ASTNode_Routine::codeGen()
 	// Routine Part may change the insert point when creating functions
 	IRGenBuilder->SetInsertPoint(&main->getBasicBlockList().back());
 
+	SymbolTable::setupNewTable();
 
 	if (body->codeGen())
 		return RetValZero;
@@ -41,7 +39,7 @@ llvm::Value* ASTNode_Routine::codeGen()
 		return logAndReturn("Main body has invalid stmt");
 }
 
-llvm::Value* ASTNode_SubRoutine::codeGen()
+llvm::Value *ASTNode_SubRoutine::codeGen()
 {
 	auto fun = IRGenBuilder->GetInsertBlock()->getParent();
 
@@ -57,11 +55,10 @@ llvm::Value* ASTNode_SubRoutine::codeGen()
 		return logAndReturn("Function " + std::string(fun->getName()) + "'s body has invalid stmt");
 }
 
-
 // i32 main(void)
-llvm::Function* ASTNode_Program::setupMainFunction()
+llvm::Function *ASTNode_Program::setupMainFunction()
 {
-	llvm::FunctionType* funcType = llvm::FunctionType::get(
+	llvm::FunctionType *funcType = llvm::FunctionType::get(
 		llvm::Type::getInt32Ty(*IRGenContext), false);
 
 	return llvm::Function::Create(
@@ -70,14 +67,11 @@ llvm::Function* ASTNode_Program::setupMainFunction()
 		IRGenModule.get());
 }
 
-
-llvm::Value* ASTNode_Program::codeGen()
+llvm::Value *ASTNode_Program::codeGen()
 {
 	auto main = setupMainFunction();
 	auto mainBB = llvm::BasicBlock::Create(*IRGenContext, "entry", main);
 	IRGenBuilder->SetInsertPoint(mainBB);
-
-	SymbolTable::setupNewTable();
 
 	if (routine->codeGen())
 	{

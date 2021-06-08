@@ -2,11 +2,9 @@
 #include "../irgen/generator.hh"
 #include "../irgen/table.hh"
 
-
-
 // promote two operands to the same type for computing
 // return false if some operand is not computable type (int or real)
-bool ASTNode_Operator::intPromotion(llvm::Value*& LHS, llvm::Value*& RHS)
+bool ASTNode_Operator::intPromotion(llvm::Value *&LHS, llvm::Value *&RHS)
 {
 	bool LI = isInt(LHS), LD = isDouble(LHS), RI = isInt(LHS), RD = isDouble(RHS);
 
@@ -22,15 +20,13 @@ bool ASTNode_Operator::intPromotion(llvm::Value*& LHS, llvm::Value*& RHS)
 	// compute between int with different bit width, promote to i32
 	else if (LI && RI && getIntSize(LHS) != getIntSize(RHS))
 	{
-		LHS = IRGenBuilder->CreateZExt(LHS, llvm::Type::getInt32Ty(*IRGenContext), "zext");
-		RHS = IRGenBuilder->CreateZExt(RHS, llvm::Type::getInt32Ty(*IRGenContext), "zext");
+		LHS = IRGenBuilder->CreateSExt(LHS, llvm::Type::getInt32Ty(*IRGenContext), "sext");
+		RHS = IRGenBuilder->CreateSExt(RHS, llvm::Type::getInt32Ty(*IRGenContext), "sext");
 	}
 	return true;
 }
 
-
-
-llvm::Value* ASTNode_OperatorAdd::codeGen()
+llvm::Value *ASTNode_OperatorAdd::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -45,7 +41,7 @@ llvm::Value* ASTNode_OperatorAdd::codeGen()
 		return nullptr;
 }
 
-llvm::Value* ASTNode_OperatorSub::codeGen()
+llvm::Value *ASTNode_OperatorSub::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -60,7 +56,7 @@ llvm::Value* ASTNode_OperatorSub::codeGen()
 		return nullptr;
 }
 
-llvm::Value* ASTNode_OperatorMul::codeGen()
+llvm::Value *ASTNode_OperatorMul::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -75,7 +71,7 @@ llvm::Value* ASTNode_OperatorMul::codeGen()
 		return nullptr;
 }
 
-llvm::Value* ASTNode_OperatorDiv::codeGen()
+llvm::Value *ASTNode_OperatorDiv::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -95,7 +91,7 @@ llvm::Value* ASTNode_OperatorDiv::codeGen()
 		return nullptr;
 }
 
-llvm::Value* ASTNode_OperatorMod::codeGen()
+llvm::Value *ASTNode_OperatorMod::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -115,7 +111,7 @@ llvm::Value* ASTNode_OperatorMod::codeGen()
 		return nullptr;
 }
 
-llvm::Value* ASTNode_OperatorMinus::codeGen()
+llvm::Value *ASTNode_OperatorMinus::codeGen()
 {
 	auto L = LHS->codeGen();
 	if (!(isInt(L) || isDouble(L)))
@@ -131,7 +127,7 @@ llvm::Value* ASTNode_OperatorMinus::codeGen()
 		return nullptr;
 }
 
-llvm::Value* ASTNode_OperatorGE::codeGen()
+llvm::Value *ASTNode_OperatorGE::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -151,7 +147,7 @@ llvm::Value* ASTNode_OperatorGE::codeGen()
 		return nullptr;
 }
 
-llvm::Value* ASTNode_OperatorGT::codeGen()
+llvm::Value *ASTNode_OperatorGT::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -171,7 +167,7 @@ llvm::Value* ASTNode_OperatorGT::codeGen()
 		return nullptr;
 }
 
-llvm::Value* ASTNode_OperatorLE::codeGen()
+llvm::Value *ASTNode_OperatorLE::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -191,7 +187,7 @@ llvm::Value* ASTNode_OperatorLE::codeGen()
 		return nullptr;
 }
 
-llvm::Value* ASTNode_OperatorLT::codeGen()
+llvm::Value *ASTNode_OperatorLT::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -211,8 +207,7 @@ llvm::Value* ASTNode_OperatorLT::codeGen()
 		return nullptr;
 }
 
-
-llvm::Value* ASTNode_OperatorEQ::codeGen()
+llvm::Value *ASTNode_OperatorEQ::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -227,7 +222,7 @@ llvm::Value* ASTNode_OperatorEQ::codeGen()
 		return nullptr;
 }
 
-llvm::Value* ASTNode_OperatorNE::codeGen()
+llvm::Value *ASTNode_OperatorNE::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -242,7 +237,7 @@ llvm::Value* ASTNode_OperatorNE::codeGen()
 		return nullptr;
 }
 
-llvm::Value* ASTNode_OperatorAnd::codeGen()
+llvm::Value *ASTNode_OperatorAnd::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -252,7 +247,7 @@ llvm::Value* ASTNode_OperatorAnd::codeGen()
 	return IRGenBuilder->CreateAnd(L, R, "and");
 }
 
-llvm::Value* ASTNode_OperatorOr::codeGen()
+llvm::Value *ASTNode_OperatorOr::codeGen()
 {
 	auto L = LHS->codeGen();
 	auto R = RHS->codeGen();
@@ -262,7 +257,7 @@ llvm::Value* ASTNode_OperatorOr::codeGen()
 	return IRGenBuilder->CreateOr(L, R, "or");
 }
 
-llvm::Value* ASTNode_OperatorNot::codeGen()
+llvm::Value *ASTNode_OperatorNot::codeGen()
 {
 	auto L = LHS->codeGen();
 	if (!(isInt(L) || isDouble(L)))
@@ -271,12 +266,12 @@ llvm::Value* ASTNode_OperatorNot::codeGen()
 	return IRGenBuilder->CreateNot(L, "or");
 }
 
-llvm::Value* ASTNode_OperandLiteral::codeGen()
+llvm::Value *ASTNode_OperandLiteral::codeGen()
 {
 	return literal->codeGen();
 }
 
-llvm::Value* ASTNode_OperandVariable::codeGen()
+llvm::Value *ASTNode_OperandVariable::codeGen()
 {
 	// constant
 	auto c = currentSymbolTable->getConstant(name);
@@ -291,7 +286,7 @@ llvm::Value* ASTNode_OperandVariable::codeGen()
 	return logAndReturn("Variable not found: " + name);
 }
 
-llvm::Value* ASTNode_OperandFunction::codeGen()
+llvm::Value *ASTNode_OperandFunction::codeGen()
 {
 	auto symbol = currentSymbolTable->getFunction(name);
 	auto fun = symbol.raw;
@@ -308,18 +303,15 @@ llvm::Value* ASTNode_OperandFunction::codeGen()
 
 	// function expects args but provided with different number of args
 	if (args->children.size() != fun->arg_size())
-		return logAndReturn("Function expects " + std::to_string(fun->arg_size())
-			+ " args but provided " + std::to_string(args->children.size()) + ": " + name);
-
+		return logAndReturn("Function expects " + std::to_string(fun->arg_size()) + " args but provided " + std::to_string(args->children.size()) + ": " + name);
 
 	auto argNode = args->children.begin();
 	auto argIsRef = symbol.isRefArg.begin();
-	std::vector<llvm::Value*> argsToSend;
+	std::vector<llvm::Value *> argsToSend;
 
-
-	for (auto& arg : fun->args())
+	for (auto &arg : fun->args())
 	{
-		if (*argIsRef)
+		if (*argIsRef++)
 		{
 			// if the arg is a ref, it must be a lvalue, thus it only can be:
 			// OperandVariable, OperandArrayElement, OperandRecordMember
@@ -327,9 +319,9 @@ llvm::Value* ASTNode_OperandFunction::codeGen()
 
 			if (refArg->getType() == ASTNodeType::OperandVariable)
 			{
-				auto refArgT = dynamic_cast<ASTNode_OperandVariable*>(refArg);
+				auto refArgT = dynamic_cast<ASTNode_OperandVariable *>(refArg);
 				auto v = currentSymbolTable->getVariable(refArgT->name).raw;
-				auto var = reinterpret_cast<llvm::AllocaInst*>(v);
+				auto var = reinterpret_cast<llvm::AllocaInst *>(v);
 				if (var->getType() != arg.getType())
 					return logAndReturn("Function arg type mismatched: " + name);
 				argsToSend.push_back(var);
@@ -337,7 +329,6 @@ llvm::Value* ASTNode_OperandFunction::codeGen()
 			// TODO
 			else
 				return logAndReturn("Function expects ref arg but provided with constant: " + name);
-
 		}
 		else
 		{
@@ -351,22 +342,21 @@ llvm::Value* ASTNode_OperandFunction::codeGen()
 	}
 
 	return IRGenBuilder->CreateCall(fun, argsToSend, name + "_call");
-
 }
 
-llvm::Value* ASTNode_OperandSystemFunction::codeGen()
+llvm::Value *ASTNode_OperandSystemFunction::codeGen()
 {
 	// System function is unary
 	if (args->children.size() != 1)
 		return logAndReturn("Sysfunc expects one arg: " + name);
 
-	auto arg = dynamic_cast<ASTNode_Expr*>(args->children[0])->codeGen();
+	auto arg = dynamic_cast<ASTNode_Expr *>(args->children[0])->codeGen();
 
 	// abs i32 or fp, 2nd arg indicates whether return poison_value or int_min if is int_min
 	if (name == "abs")
 		return IRGenBuilder->CreateBinaryIntrinsic(llvm::Intrinsic::abs, arg,
-			llvm::ConstantInt::get(*IRGenContext, llvm::APInt(1, 0)),
-			nullptr, "abs");
+												   llvm::ConstantInt::get(*IRGenContext, llvm::APInt(1, 0)),
+												   nullptr, "abs");
 	// chr i32 to i8
 	if (name == "chr")
 		return IRGenBuilder->CreateTrunc(arg, llvm::Type::getInt8Ty(*IRGenContext), "chr");
@@ -378,7 +368,7 @@ llvm::Value* ASTNode_OperandSystemFunction::codeGen()
 	}
 	// ord i8 to i32
 	if (name == "ord")
-		return IRGenBuilder->CreateZExt(arg, llvm::Type::getInt32Ty(*IRGenContext), "ord");
+		return IRGenBuilder->CreateSExt(arg, llvm::Type::getInt32Ty(*IRGenContext), "ord");
 	// pred i32 x = x - 1
 	if (name == "pred")
 		return IRGenBuilder->CreateSub(arg, llvm::ConstantInt::get(arg->getType(), 1, true), "pred");
@@ -392,17 +382,15 @@ llvm::Value* ASTNode_OperandSystemFunction::codeGen()
 	if (name == "succ")
 		return IRGenBuilder->CreateAdd(arg, llvm::ConstantInt::get(arg->getType(), 1, true), "succ");
 
-
 	return logAndReturn("Unrecognized system function " + name);
-
 }
 
-llvm::Value* ASTNode_OperandArrayElement::codeGen()
+llvm::Value *ASTNode_OperandArrayElement::codeGen()
 {
 	//TODO
 }
 
-llvm::Value* ASTNode_OperandRecordMember::codeGen()
+llvm::Value *ASTNode_OperandRecordMember::codeGen()
 {
 	//TODO
 }

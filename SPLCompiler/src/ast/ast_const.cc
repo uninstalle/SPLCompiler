@@ -2,37 +2,36 @@
 #include "../irgen/generator.hh"
 #include "../irgen/table.hh"
 
-
-llvm::Constant* ASTNode_ConstInteger::codeGen()
+llvm::Constant *ASTNode_ConstInteger::codeGen()
 {
 	return llvm::ConstantInt::get(*IRGenContext, llvm::APInt(32, value, true));
 }
 
-llvm::Constant* ASTNode_ConstReal::codeGen()
+llvm::Constant *ASTNode_ConstReal::codeGen()
 {
 	return llvm::ConstantFP::get(*IRGenContext, llvm::APFloat(value));
 }
 
-llvm::Constant* ASTNode_ConstCharacter::codeGen()
+llvm::Constant *ASTNode_ConstCharacter::codeGen()
 {
 	return llvm::ConstantInt::get(*IRGenContext, llvm::APInt(8, value, false));
 }
 
-llvm::Constant* ASTNode_ConstString::codeGen()
+llvm::Constant *ASTNode_ConstString::codeGen()
 {
-	std::vector<llvm::Constant*> charArray;
-	for (auto& ch : value)
+	std::vector<llvm::Constant *> charArray;
+	for (auto &ch : value)
 		charArray.emplace_back(llvm::ConstantInt::get(*IRGenContext, llvm::APInt(8, ch, false)));
 
 	return llvm::ConstantArray::get(llvm::ArrayType::get(llvm::Type::getInt8Ty(*IRGenContext), charArray.size()), charArray);
 }
 
-llvm::Constant* ASTNode_ConstBoolean::codeGen()
+llvm::Constant *ASTNode_ConstBoolean::codeGen()
 {
 	return llvm::ConstantInt::get(*IRGenContext, llvm::APInt(1, value, false));
 }
 
-llvm::Value* ASTNode_ConstDecl::codeGen()
+llvm::Value *ASTNode_ConstDecl::codeGen()
 {
 	auto v = value->codeGen();
 
@@ -57,8 +56,7 @@ llvm::Value* ASTNode_ConstDecl::codeGen()
 	return v;
 }
 
-
-llvm::Value* ASTNode_ConstDeclList::codeGen()
+llvm::Value *ASTNode_ConstDeclList::codeGen()
 {
 	for (auto constDecl : children)
 	{
