@@ -1,8 +1,8 @@
 %{
     #include <iostream>
     #include "Parser.hh"
-    #include "log.hh"
-    #include "ast.hh"
+    #include "logger/logger.hh"
+    #include "ast/ast.hh"
     int lineno = 1;
     int colno = 1;
 %}

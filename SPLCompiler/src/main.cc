@@ -1,5 +1,6 @@
 #include "Parser.hh"
-#include "ast.hh"
+#include "ast/ast.hh"
+#include "irgen/generator.hh"
 #include <iostream>
 
 int main(int args, char **argv)
@@ -26,7 +27,6 @@ int main(int args, char **argv)
         yyparse();
     }
 
-    ASTHandler::printAST();
     ASTHandler::codeGen();
 
     return 0;
