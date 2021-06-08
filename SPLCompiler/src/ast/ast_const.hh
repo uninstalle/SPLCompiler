@@ -6,12 +6,12 @@
 class ASTNode_Const : public ASTNode
 {
 public:
-	virtual std::string toString() = 0;
+    virtual std::string toString() = 0;
 
-	llvm::Constant *codeGen() override = 0;
+    llvm::Constant* codeGen() override = 0;
 
-	ASTNodeType getType() override { return ASTNodeType::Const; }
-	void print() override { YaccLogger.println("ConstBase"); }
+    ASTNodeType getType() override { return ASTNodeType::Const; }
+    void print() override { YaccLogger.println("ConstBase"); }
 };
 
 // Const Integer :i32 signed
@@ -19,19 +19,19 @@ public:
 class ASTNode_ConstInteger : public ASTNode_Const
 {
 public:
-	const int value;
+    const int value;
 
-	ASTNode_ConstInteger(const int val) : value(val) {}
+    ASTNode_ConstInteger(const int val) : value(val) {}
 
-	std::string toString() override
-	{
-		return std::to_string(value);
-	}
+    std::string toString() override
+    {
+        return std::to_string(value);
+    }
 
-	llvm::Constant *codeGen() override;
+    llvm::Constant* codeGen() override;
 
-	ASTNodeType getType() override { return ASTNodeType::ConstInteger; }
-	void print() override { YaccLogger.println("ConstInteger " + toString()); }
+    ASTNodeType getType() override { return ASTNodeType::ConstInteger; }
+    void print() override { YaccLogger.println("ConstInteger " + toString()); }
 };
 
 // Const Real :double
@@ -39,19 +39,19 @@ public:
 class ASTNode_ConstReal : public ASTNode_Const
 {
 public:
-	const double value;
+    const double value;
 
-	ASTNode_ConstReal(const double val) : value(val) {}
+    ASTNode_ConstReal(const double val) : value(val) {}
 
-	std::string toString() override
-	{
-		return std::to_string(value);
-	}
+    std::string toString() override
+    {
+        return std::to_string(value);
+    }
 
-	llvm::Constant *codeGen() override;
+    llvm::Constant* codeGen() override;
 
-	ASTNodeType getType() override { return ASTNodeType::ConstReal; }
-	void print() override { YaccLogger.println("ConstReal " + toString()); }
+    ASTNodeType getType() override { return ASTNodeType::ConstReal; }
+    void print() override { YaccLogger.println("ConstReal " + toString()); }
 };
 
 // Const Character :i8 unsigned
@@ -59,19 +59,19 @@ public:
 class ASTNode_ConstCharacter : public ASTNode_Const
 {
 public:
-	const char value;
+    const char value;
 
-	ASTNode_ConstCharacter(const char val) : value(val) {}
+    ASTNode_ConstCharacter(const char val) : value(val) {}
 
-	std::string toString() override
-	{
-		return std::to_string(value);
-	}
+    std::string toString() override
+    {
+        return std::to_string(value);
+    }
 
-	llvm::Constant *codeGen() override;
+    llvm::Constant* codeGen() override;
 
-	ASTNodeType getType() override { return ASTNodeType::ConstCharacter; }
-	void print() override { YaccLogger.println("ConstCharacter " + toString()); }
+    ASTNodeType getType() override { return ASTNodeType::ConstCharacter; }
+    void print() override { YaccLogger.println("ConstCharacter " + toString()); }
 };
 
 // Const String
@@ -79,19 +79,19 @@ public:
 class ASTNode_ConstString : public ASTNode_Const
 {
 public:
-	std::string value;
+    std::string value;
 
-	ASTNode_ConstString(const char *val) : value(val) {}
+    ASTNode_ConstString(const char* val) : value(val) {}
 
-	std::string toString() override
-	{
-		return value;
-	}
+    std::string toString() override
+    {
+        return value;
+    }
 
-	llvm::Constant *codeGen() override;
+    llvm::Constant* codeGen() override;
 
-	ASTNodeType getType() override { return ASTNodeType::ConstString; }
-	void print() override { YaccLogger.println("ConstString " + toString()); }
+    ASTNodeType getType() override { return ASTNodeType::ConstString; }
+    void print() override { YaccLogger.println("ConstString " + toString()); }
 };
 
 // Const Boolean :i1 unsigned
@@ -99,19 +99,19 @@ public:
 class ASTNode_ConstBoolean : public ASTNode_Const
 {
 public:
-	const bool value;
+    const bool value;
 
-	ASTNode_ConstBoolean(const bool val) : value(val) {}
+    ASTNode_ConstBoolean(const bool val) : value(val) {}
 
-	std::string toString() override
-	{
-		return value ? "true" : "false";
-	}
+    std::string toString() override
+    {
+        return value ? "true" : "false";
+    }
 
-	llvm::Constant *codeGen() override;
+    llvm::Constant* codeGen() override;
 
-	ASTNodeType getType() override { return ASTNodeType::ConstBoolean; }
-	void print() override { YaccLogger.print("ConstBoolean " + toString()); }
+    ASTNodeType getType() override { return ASTNodeType::ConstBoolean; }
+    void print() override { YaccLogger.print("ConstBoolean " + toString()); }
 };
 
 // Constant Declaration
@@ -120,20 +120,20 @@ public:
 class ASTNode_ConstDecl : public ASTNode
 {
 public:
-	std::string name;
-	ASTNode_Const *const value;
+    std::string name;
+    ASTNode_Const* const value;
 
-	ASTNode_ConstDecl(ASTNode_Name *pName, ASTNode_Const *value)
-		: name(std::move(pName->name)), value(value)
-	{
-		delete pName;
-		append(value);
-	}
+    ASTNode_ConstDecl(ASTNode_Name* pName, ASTNode_Const* value)
+        : name(std::move(pName->name)), value(value)
+    {
+        delete pName;
+        append(value);
+    }
 
-	llvm::Value *codeGen() override;
+    llvm::Value* codeGen() override;
 
-	ASTNodeType getType() override { return ASTNodeType::ConstDecl; }
-	void print() override { YaccLogger.println("ConstDecl " + name + " " + value->toString()); }
+    ASTNodeType getType() override { return ASTNodeType::ConstDecl; }
+    void print() override { YaccLogger.println("ConstDecl " + name + " " + value->toString()); }
 };
 
 // Constant Declaration List
@@ -142,8 +142,8 @@ public:
 class ASTNode_ConstDeclList : public ASTNode
 {
 public:
-	llvm::Value *codeGen() override;
+    llvm::Value* codeGen() override;
 
-	ASTNodeType getType() override { return ASTNodeType::ConstDeclList; }
-	void print() override { YaccLogger.println("ConstExprList size " + std::to_string(children.size())); }
+    ASTNodeType getType() override { return ASTNodeType::ConstDeclList; }
+    void print() override { YaccLogger.println("ConstExprList size " + std::to_string(children.size())); }
 };

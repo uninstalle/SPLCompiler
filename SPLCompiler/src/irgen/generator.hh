@@ -6,19 +6,19 @@ extern std::unique_ptr<llvm::LLVMContext> IRGenContext;
 extern std::unique_ptr<llvm::IRBuilder<>> IRGenBuilder;
 extern std::unique_ptr<llvm::Module> IRGenModule;
 extern std::unique_ptr<llvm::legacy::FunctionPassManager> IRGenFPM;
-extern llvm::Constant *RetValZero;
+extern llvm::Constant* RetValZero;
 
 class ASTNode;
 
 class ASTHandler
 {
-	static void initializeIRGenerator(const std::string &name);
-	static void recursivePrintAST(ASTNode *head, int depth);
-	static void printIR();
-	static void printAST();
+    static void initializeIRGenerator(const std::string& name);
+    static void recursivePrintAST(ASTNode* head, int depth);
+    static void printIR();
+    static void printAST();
 
 public:
-	ASTHandler() = delete;
-	static void setASTHead(ASTNode *head);
-	static void codeGen();
+    ASTHandler() = delete;
+    static void setASTHead(ASTNode* head);
+    static void codeGen();
 };

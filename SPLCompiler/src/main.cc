@@ -3,7 +3,7 @@
 #include "irgen/generator.hh"
 #include <iostream>
 
-int main(int args, char **argv)
+int main(int args, char** argv)
 {
     if (args > 2)
     {
@@ -12,7 +12,7 @@ int main(int args, char **argv)
     }
     else if (args == 2) //file
     {
-        extern FILE *yyin;
+        extern FILE* yyin;
         yyin = fopen(argv[1], "r");
         if (!yyin)
         {

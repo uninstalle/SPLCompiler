@@ -2,69 +2,97 @@
 #include "../irgen/generator.hh"
 #include "../irgen/table.hh"
 
-llvm::Type *ASTNode_SimpleTypePlain::typeGen()
-{
-	if (name == "integer")
-		return llvm::Type::getInt32Ty(*IRGenContext);
-	if (name == "real")
-		return llvm::Type::getDoubleTy(*IRGenContext);
-	if (name == "char")
-		return llvm::Type::getInt8Ty(*IRGenContext);
-	if (name == "boolean")
-		return llvm::Type::getInt1Ty(*IRGenContext);
 
-	CodeGenLogger.println("Unrecognized simple type " + name);
-	return nullptr;
+std::string ASTNode_Type::getSimpleTypeName(llvm::Type* type)
+{
+    if (type->isIntegerTy())
+    {
+        if (type->getIntegerBitWidth() == 32)
+            return "integer";
+        else if (type->getIntegerBitWidth() == 8)
+            return "char";
+        else if (type->getIntegerBitWidth() == 1)
+            return "boolean";
+        else
+            return "i" + std::to_string(type->getIntegerBitWidth());
+    }
+    else if (type->isDoubleTy())
+        return "real";
+    else if (type->isPointerTy())
+        // recursively get pointer's final element type
+        return "pointer" + getSimpleTypeName(type->getPointerElementType());
+    else
+        return "unrecognized";
 }
 
-llvm::Type *ASTNode_SimpleTypeEnumerate::typeGen()
+
+std::shared_ptr<TypeSymbol> ASTNode_SimpleTypePlain::typeGen()
 {
-	//TODO
+    auto t = currentSymbolTable->getType(name);
+    if (t)
+        return t;
+    else
+        CodeGenLogger.println("Unrecognized simple type " + name);
+    return currentSymbolTable->getType(name);
 }
 
-llvm::Type *ASTNode_SimpleTypeSubRange::typeGen()
+std::shared_ptr<TypeSymbol> ASTNode_SimpleTypeEnumerate::typeGen()
 {
-	//TODO
+    // enum is implemented as integer
+    auto enumSymbol = std::make_shared<TypeSymbol>(llvm::Type::getInt32Ty(*IRGenContext),
+        TypeSymbol::ExtraTypeInfo::Enumerate);
+    // copy the name list to symbol attribute
+    enumSymbol->attributes = list->list;
+    return enumSymbol;
 }
 
-llvm::Type *ASTNode_ArrayType::typeGen()
+std::shared_ptr<TypeSymbol> ASTNode_SimpleTypeSubRange::typeGen()
 {
-	//TODO
+    // sub range is implemented as integer
+    auto subRangeSymbol = std::make_shared<TypeSymbol>(llvm::Type::getInt32Ty(*IRGenContext),
+        TypeSymbol::ExtraTypeInfo::SubRange);
+    // copy the bounds of sub range to symbol attribute
+    subRangeSymbol->attributes.push_back(begin);
+    subRangeSymbol->attributes.push_back(end);
+    return subRangeSymbol;
 }
 
-llvm::Type *ASTNode_RecordType::typeGen()
+std::shared_ptr<TypeSymbol> ASTNode_ArrayType::typeGen()
 {
-	//TODO
+    //TODO
 }
 
-llvm::Value *ASTNode_TypeDecl::codeGen()
+std::shared_ptr<TypeSymbol> ASTNode_RecordType::typeGen()
 {
-	auto t = type->typeGen();
-	if (!t)
-		return logAndReturn("Type declaration is invalid: " + name);
-
-	if (currentSymbolTable == GlobalTable)
-	{
-		// if it is defined in global table, then it is a global variable
-		//
-		// store the global value in the symbol table
-		auto symbol = TypeSymbol(t);
-		symbol.isGlobal = true;
-		GlobalTable->insertType(name, symbol);
-	}
-	else
-		// if not, just store the name as an alias of const value in the symbol table
-		currentSymbolTable->insertType(name, t);
-
-	return RetValZero;
+    //TODO
 }
 
-llvm::Value *ASTNode_TypeDeclList::codeGen()
+llvm::Value* ASTNode_TypeDecl::codeGen()
 {
-	for (auto typeDecl : children)
-	{
-		if (!typeDecl->codeGen())
-			return nullptr;
-	}
-	return RetValZero;
+    auto t = currentSymbolTable->getType(name);
+    if (t)
+        return logAndReturn("Type has been defined: " + name);
+    t = type->typeGen();
+    if (!t)
+        return logAndReturn("Type declaration is invalid: " + name);
+
+    if (currentSymbolTable == GlobalTable)
+    {
+        t->isGlobal = true;
+        GlobalTable->insertType(name, *t);
+    }
+    else
+        currentSymbolTable->insertType(name, *t);
+
+    return RetValZero;
+}
+
+llvm::Value* ASTNode_TypeDeclList::codeGen()
+{
+    for (auto typeDecl : children)
+    {
+        if (!typeDecl->codeGen())
+            return nullptr;
+    }
+    return RetValZero;
 }

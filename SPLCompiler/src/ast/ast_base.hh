@@ -5,96 +5,96 @@
 
 enum class ASTNodeType
 {
-	Base,
-	Name,
+    Base,
+    Name,
 
-	Const,
-	ConstInteger,
-	ConstReal,
-	ConstCharacter,
-	ConstString,
-	ConstBoolean,
-	ConstDecl,
-	ConstDeclList,
+    Const,
+    ConstInteger,
+    ConstReal,
+    ConstCharacter,
+    ConstString,
+    ConstBoolean,
+    ConstDecl,
+    ConstDeclList,
 
-	Expr,
-	ArgList,
-	Operator,
-	OperatorAdd,
-	OperatorSub,
-	OperatorMul,
-	OperatorDiv,
-	OperatorMod,
-	OperatorMinus,
-	OperatorGE,
-	OperatorGT,
-	OperatorLE,
-	OperatorLT,
-	OperatorEQ,
-	OperatorNE,
-	OperatorAnd,
-	OperatorOr,
-	OperatorNot,
+    Expr,
+    ArgList,
+    Operator,
+    OperatorAdd,
+    OperatorSub,
+    OperatorMul,
+    OperatorDiv,
+    OperatorMod,
+    OperatorMinus,
+    OperatorGE,
+    OperatorGT,
+    OperatorLE,
+    OperatorLT,
+    OperatorEQ,
+    OperatorNE,
+    OperatorAnd,
+    OperatorOr,
+    OperatorNot,
 
-	Operand,
-	OperandLiteral,
-	OperandVariable,
-	OperandFunction,
-	OperandSystemFunction,
-	OperandArrayElement,
-	OperandRecordMember,
+    Operand,
+    OperandLiteral,
+    OperandVariable,
+    OperandFunction,
+    OperandSystemFunction,
+    OperandArrayElement,
+    OperandRecordMember,
 
-	Type,
-	SimpleType,
-	SimpleTypePlain,
-	NameList,
-	SimpleTypeEnumerate,
-	SimpleTypeSubRange,
-	ArrayType,
-	FieldDecl,
-	FieldDeclList,
-	RecordType,
-	TypeDecl,
-	TypeDeclList,
+    Type,
+    SimpleType,
+    SimpleTypePlain,
+    NameList,
+    SimpleTypeEnumerate,
+    SimpleTypeSubRange,
+    ArrayType,
+    FieldDecl,
+    FieldDeclList,
+    RecordType,
+    TypeDecl,
+    TypeDeclList,
 
-	VarParaList,
-	ValParaList,
-	ParaTypeList,
-	ParaDeclList,
-	FunctionHead,
-	ProcedureHead,
-	FunctionDecl,
-	ProcedureDecl,
+    VarParaList,
+    ValParaList,
+    ParaTypeList,
+    ParaDeclList,
+    FunctionHead,
+    ProcedureHead,
+    FunctionDecl,
+    ProcedureDecl,
 
-	VarDecl,
-	VarDeclList,
+    VarDecl,
+    VarDeclList,
 
-	Stmt,
-	StmtList,
-	StmtCompound,
-	StmtAssign,
-	StmtAssignSimpleType,
-	StmtAssignArrayType,
-	StmtAssignRecordType,
-	StmtProc,
-	StmtSysProc,
-	StmtIf,
-	StmtRepeat,
-	StmtWhile,
-	StmtFor,
-	CaseExpr,
-	CaseExprLiteral,
-	CaseExprConstVar,
-	CaseExprDefault,
-	CaseExprList,
-	StmtCase,
-	StmtGoto,
+    Stmt,
+    StmtList,
+    StmtCompound,
+    StmtAssign,
+    StmtAssignSimpleType,
+    StmtAssignArrayType,
+    StmtAssignRecordType,
+    StmtProc,
+    StmtSysProc,
+    StmtIf,
+    StmtRepeat,
+    StmtWhile,
+    StmtFor,
+    CaseExpr,
+    CaseExprLiteral,
+    CaseExprConstVar,
+    CaseExprDefault,
+    CaseExprList,
+    StmtCase,
+    StmtGoto,
 
-	RoutinePart,
-	RoutineHead,
-	Routine,
-	SubRoutine,
-	Program
+    RoutinePart,
+    RoutineHead,
+    Routine,
+    SubRoutine,
+    Program
 };
 
 // Node base class
@@ -104,32 +104,32 @@ enum class ASTNodeType
 class ASTNode
 {
 public:
-	std::vector<ASTNode *> children;
+    std::vector<ASTNode*> children;
 
-	ASTNode() = default;
-	ASTNode(const ASTNode &node) = delete;
-	ASTNode(ASTNode &&node) = delete;
-	ASTNode &operator=(const ASTNode &node) = delete;
-	ASTNode &operator=(ASTNode &&node) = delete;
+    ASTNode() = default;
+    ASTNode(const ASTNode& node) = delete;
+    ASTNode(ASTNode&& node) = delete;
+    ASTNode& operator=(const ASTNode& node) = delete;
+    ASTNode& operator=(ASTNode&& node) = delete;
 
-	// send msg to CodeGenLogger and return nullptr
-	static llvm::Value *logAndReturn(const std::string &msg);
+    // send msg to CodeGenLogger and return nullptr
+    static llvm::Value* logAndReturn(const std::string& msg);
 
-	void append(ASTNode *node)
-	{
-		if (node)
-			children.push_back(node);
-	}
+    void append(ASTNode* node)
+    {
+        if (node)
+            children.push_back(node);
+    }
 
-	virtual llvm::Value *codeGen() = 0;
-	virtual ASTNodeType getType() { return ASTNodeType::Base; }
-	virtual void print() { YaccLogger.print("BaseNode"); }
+    virtual llvm::Value* codeGen() = 0;
+    virtual ASTNodeType getType() { return ASTNodeType::Base; }
+    virtual void print() { YaccLogger.print("BaseNode"); }
 
-	virtual ~ASTNode()
-	{
-		for (auto node : children)
-			delete node;
-	}
+    virtual ~ASTNode()
+    {
+        for (auto node : children)
+            delete node;
+    }
 };
 
 // Name
@@ -140,11 +140,11 @@ public:
 class ASTNode_Name : public ASTNode
 {
 public:
-	std::string name;
+    std::string name;
 
-	ASTNode_Name(std::string name) : name(std::move(name)) {}
+    ASTNode_Name(std::string name) : name(std::move(name)) {}
 
-	llvm::Value *codeGen() override { return nullptr; }
-	ASTNodeType getType() override { return ASTNodeType::Name; }
-	void print() override { YaccLogger.print("Name " + name); }
+    llvm::Value* codeGen() override { return nullptr; }
+    ASTNodeType getType() override { return ASTNodeType::Name; }
+    void print() override { YaccLogger.print("Name " + name); }
 };

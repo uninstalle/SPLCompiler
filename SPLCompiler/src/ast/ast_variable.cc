@@ -2,53 +2,56 @@
 #include "../irgen/generator.hh"
 #include "../irgen/table.hh"
 
-llvm::AllocaInst *allocInEntryBlock(llvm::Function *fun, const std::string &varName, llvm::Type *type)
+llvm::AllocaInst* allocInEntryBlock(llvm::Function* fun, const std::string& varName, llvm::Type* type)
 {
-	llvm::IRBuilder<> builder(&fun->getEntryBlock(), fun->getEntryBlock().begin());
-	return builder.CreateAlloca(type, nullptr, varName);
+    llvm::IRBuilder<> builder(&fun->getEntryBlock(), fun->getEntryBlock().begin());
+    return builder.CreateAlloca(type, nullptr, varName);
 }
 
-llvm::Value *ASTNode_VarDecl::codeGen()
+llvm::Value* ASTNode_VarDecl::codeGen()
 {
-	auto t = type->typeGen();
+    auto t = type->typeGen();
+    // if this is a declared type, then its name in symbol table can be got from this method
+    // if not, use the return value of toString method as a type name
+    auto typeName = type->toString();
+    if (!currentSymbolTable->getType(typeName))
+        currentSymbolTable->insertType(typeName, *t);
 
-	if (!t)
-		return logAndReturn("Variable declaration has invalid type: " + list->toString());
+    if (!t)
+        return logAndReturn("Variable declaration has invalid type: " + list->toString());
 
-	auto v = llvm::Constant::getNullValue(t);
 
-	for (auto name : list->list)
-	{
-		if (currentSymbolTable == GlobalTable)
-		{
-			// if it is defined in global table, then it is a global variable
-			auto gv = new llvm::GlobalVariable(
-				*IRGenModule,
-				t,
-				false,
-				llvm::GlobalValue::InternalLinkage,
-				v,
-				name);
-			// store the global value in the symbol table
-			auto symbol = VariableSymbol(gv);
-			symbol.isGlobal = true;
-			GlobalTable->insertVariable(name, symbol);
-		}
-		else
-		{
-			auto ptr = allocInEntryBlock(IRGenBuilder->GetInsertBlock()->getParent(), name, t);
-			currentSymbolTable->insertVariable(name, ptr);
-		}
-	}
-	return v;
+    for (auto name : list->list)
+    {
+        if (currentSymbolTable == GlobalTable)
+        {
+            // set global variable's initial value to zero
+            auto v = llvm::Constant::getNullValue(t->raw);
+            auto gv = new llvm::GlobalVariable(
+                *IRGenModule,
+                t->raw,
+                false,
+                llvm::GlobalValue::InternalLinkage,
+                v,
+                name);
+            // store the global value in the symbol table
+            GlobalTable->insertVariable(name, { gv,typeName,true });
+        }
+        else
+        {
+            auto ptr = allocInEntryBlock(IRGenBuilder->GetInsertBlock()->getParent(), name, t->raw);
+            currentSymbolTable->insertVariable(name, { ptr,typeName });
+        }
+    }
+    return RetValZero;
 }
 
-llvm::Value *ASTNode_VarDeclList::codeGen()
+llvm::Value* ASTNode_VarDeclList::codeGen()
 {
-	for (auto varDecl : children)
-	{
-		if (!varDecl->codeGen())
-			return nullptr;
-	}
-	return RetValZero;
+    for (auto varDecl : children)
+    {
+        if (!varDecl->codeGen())
+            return nullptr;
+    }
+    return RetValZero;
 }

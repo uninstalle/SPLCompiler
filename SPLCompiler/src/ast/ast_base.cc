@@ -1,7 +1,7 @@
 #include "ast_base.hh"
 
-llvm::Value *ASTNode::logAndReturn(const std::string &msg)
+llvm::Value* ASTNode::logAndReturn(const std::string& msg)
 {
-	CodeGenLogger.println(msg);
-	return nullptr;
+    CodeGenLogger.println(msg);
+    return nullptr;
 }
