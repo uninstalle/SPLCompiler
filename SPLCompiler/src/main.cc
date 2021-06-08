@@ -26,7 +26,6 @@ int main(int args, char **argv)
         yyparse();
     }
 
-    ASTHandler::printAST();
     ASTHandler::codeGen();
 
     return 0;

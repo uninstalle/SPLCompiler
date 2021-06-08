@@ -16,8 +16,8 @@
     class ASTNode_RoutineHead* node_routine_head;
 
     class ASTNode_Const* node_const;
-    class ASTNode_ConstExpr* node_const_expr;
-    class ASTNode_ConstExprList* node_const_expr_list;
+    class ASTNode_ConstDecl* node_const_decl;
+    class ASTNode_ConstDeclList* node_const_decl_list;
 
     class ASTNode_Type* node_type;
     class ASTNode_SimpleType* node_simple_type;
@@ -60,9 +60,6 @@
     class ASTNode_CaseExprList* node_case_expr_list;
 
     class ASTNode_Expr* node_expr;
-    class ASTNode_ExprList* node_expr_list;
-    class ASTNode_Operator* node_operator;
-    class ASTNode_operand* node_operand;
     class ASTNode_ArgList* node_arg_list;
 }
 
@@ -156,15 +153,15 @@ OP_SEMI
 %type <node_name> sys_funct
 %type <node_const> sys_con
 %type <node_const> const_value
-%type <node_const_expr> const_expr
-%type <node_const_expr_list> const_expr_list
-%type <node_const_expr_list> const_part
+%type <node_const_decl> const_decl
+%type <node_const_decl_list> const_decl_list
+%type <node_const_decl_list> const_part
 
 %type <node_type> type
 %type <node_simple_type> sys_type
-%type <node_simple_type> simple_type_decl
-%type <node_array_type> array_type_decl
-%type <node_record_type> record_type_decl
+%type <node_simple_type> simple_type
+%type <node_array_type> array_type
+%type <node_record_type> record_type
 %type <node_type_decl> type_decl
 %type <node_type_decl_list> type_decl_list
 %type <node_type_decl_list> type_part
@@ -214,7 +211,7 @@ OP_SEMI
 %type <node_expr> term
 %type <node_expr> factor
 %type <node_arg_list> args_list
-%type <node_arg_list> args
+%type <node_arg_list> non_empty_args_list
 
 // fix s/r conflict of routine_part
 %precedence EMPTY_ROUTINE_PART
@@ -310,34 +307,26 @@ sys_type:
         $$ = new ASTNode_SimpleTypePlain("real");
     }
     |SYS_STRING {
-        $$ = new ASTNode_SimpleTypePlain("string");
+        $$ = new ASTNode_ArrayType(new ASTNode_SimpleTypePlain("integer"),new ASTNode_SimpleTypePlain("char"));
     }
     ;
     
 
 routine:
     routine_head routine_body {
-        $$ = new ASTNode_Routine();
-        $$->append($1);
-        $$->append($2);
+        $$ = new ASTNode_Routine($1,$2);
     }
     ;
 
 sub_routine:
     routine_head routine_body {
-        $$ = new ASTNode_SubRoutine();
-        $$->append($1);
-        $$->append($2);
+        $$ = new ASTNode_SubRoutine($1,$2);
     }
     ;
 
 routine_head:
     label_part const_part type_part var_part routine_part {
-        $$ = new ASTNode_RoutineHead();
-        $$->append($2);
-        $$->append($3);
-        $$->append($4);
-        $$->append($5);
+        $$ = new ASTNode_RoutineHead($2,$3,$4,$5);
     }
     ;
 
@@ -346,7 +335,7 @@ label_part:
     ;
 
 const_part:
-    KW_CONST const_expr_list {
+    KW_CONST const_decl_list {
         $$ = $2;
     }
     | %empty {
@@ -354,18 +343,18 @@ const_part:
     }
     ;
 
-const_expr_list:
-    const_expr_list const_expr {
+const_decl_list:
+    const_decl_list const_decl {
         $$ = $1;
         $$->append($2);
     }
-    | const_expr {
+    | const_decl {
         $$ = new ASTNode_ConstExprList();
         $$->append($1);
     }
     ;
 
-const_expr:
+const_decl:
     NAME OP_EQUAL const_value OP_SEMI {
         $$ = new ASTNode_ConstExpr($1,$3);
     }
@@ -416,18 +405,18 @@ type_decl:
     ;
 
 type:
-    simple_type_decl {
+    simple_type {
         $$ = $1;
     }
-    | array_type_decl {
+    | array_type {
         $$ = $1;
     }
-    | record_type_decl {
+    | record_type {
         $$ = $1;
     }
     ;
 
-simple_type_decl:
+simple_type:
     sys_type {
         $$ = $1;
     }
@@ -438,31 +427,22 @@ simple_type_decl:
         $$ = new ASTNode_SimpleTypeEnumerate($2);
     }
     | const_value OP_DOTDOT const_value {
-        $$ = new ASTNode_SimpleTypeSubrange($1,$3);
-    }
-    | OP_MINUS const_value OP_DOTDOT const_value {
-        //TODO: is this OP_MINUS necessary? check it
-        $$ = new ASTNode_SimpleTypeSubrange($2,$4);
-    }
-    | OP_MINUS const_value OP_DOTDOT OP_MINUS const_value {
-        //TODO: is this OP_MINUS necessary? check it
-        $$ = new ASTNode_SimpleTypeSubrange($2,$5);
+        $$ = new ASTNode_SimpleTypeSubRange($1,$3);
     }
     | NAME OP_DOTDOT NAME {
-        $$ = new ASTNode_SimpleTypeSubrange($1,$3);
+        $$ = new ASTNode_SimpleTypeSubRange($1,$3);
     }
     ;
 
-array_type_decl:
-    KW_ARRAY OP_LB simple_type_decl OP_RB KW_OF type {
+array_type:
+    KW_ARRAY OP_LB simple_type OP_RB KW_OF type {
         $$ = new ASTNode_ArrayType($3,$6);
     }
     ;
 
-record_type_decl:
+record_type:
     KW_RECORD field_decl_list KW_END {
-        $$ = new ASTNode_RecordType();
-        $$->append($2);
+        $$ = new ASTNode_RecordType($2);
     }
     ;
 
@@ -544,32 +524,25 @@ routine_part:
 
 function_decl:
     function_head OP_SEMI sub_routine OP_SEMI {
-        $$ = new ASTNode_FunctionDecl();
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_FunctionDecl($1,$3);
     }
     ;
 
 function_head:
-    KW_FUNCTION NAME parameters OP_COLON simple_type_decl {
-        $$ = new ASTNode_FunctionHead($2);
-        $$->append($3);
-        $$->append($5);
+    KW_FUNCTION NAME parameters OP_COLON simple_type {
+        $$ = new ASTNode_FunctionHead($2,$3,$5);
     }
     ;
 
 procedure_decl:
     procedure_head OP_SEMI sub_routine OP_SEMI {
-        $$ = new ASTNode_ProcedureDecl();
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_ProcedureDecl($1,$3);
     }
     ;
 
 procedure_head:
     KW_PROCEDURE NAME parameters {
-        $$ = new ASTNode_ProcedureHead($2);
-        $$->append($3);
+        $$ = new ASTNode_ProcedureHead($2,$3);
     }
     ;
 
@@ -578,7 +551,7 @@ parameters:
         $$ = $2;
     }
     | %empty {
-        $$ = nullptr;
+        $$ = new ASTNode_ParaDeclList();
     }
     ;
 
@@ -594,10 +567,10 @@ para_decl_list:
     ;
 
 para_type_list:
-    var_para_list OP_COLON simple_type_decl {
+    var_para_list OP_COLON simple_type {
         $$ = new ASTNode_ParaTypeList($1,$3);
     }
-    | val_para_list OP_COLON simple_type_decl {
+    | val_para_list OP_COLON simple_type {
         $$ = new ASTNode_ParaTypeList($1,$3);
         }
     ;
@@ -622,8 +595,7 @@ routine_body:
 
 compound_stmt:
     KW_BEGIN stmt_list KW_END {
-        $$ = new ASTNode_StmtCompound();
-        $$->append($2);
+        $$ = new ASTNode_StmtCompound($2);
     }
     ;
 
@@ -679,37 +651,28 @@ non_label_stmt:
 
 assign_stmt:
     NAME OP_ASSIGN expression {
-        $$ = new ASTNode_StmtAssign($1);
-        $$->append($3);
+        $$ = new ASTNode_StmtAssignSimpleType($1,$3);
     }
     | NAME OP_LB expression OP_RB OP_ASSIGN expression {
-        $$ = new ASTNode_StmtAssign($1,$3);
-        $$->append($3);
-        $$->append($6);
+        $$ = new ASTNode_StmtAssignArrayType($1,$3,$6);
     }
     | NAME OP_DOT NAME OP_ASSIGN expression {
-        $$ = new ASTNode_StmtAssign($1,$3);
-        $$->append($5);
+        $$ = new ASTNode_StmtAssignRecordType($1,$3,$5);
     }
     ;
 
 proc_stmt:
     NAME OP_LP args_list OP_RP {
-        $$ = new ASTNode_StmtProc($1,false);
-        $$->append($3);
+        $$ = new ASTNode_StmtProc($1,$3);
     }
     | sys_proc OP_LP args_list OP_RP {
-        $$ = new ASTNode_StmtProc($1,true);
-        $$->append($3);
+        $$ = new ASTNode_StmtSysProc($1,$3);
     }
     ;
 
 if_stmt:
     KW_IF expression KW_THEN stmt else_clause {
-        $$ = new ASTNode_StmtIf();
-        $$->append($2);
-        $$->append($4);
-        $$->append($5);
+        $$ = new ASTNode_StmtIf($2,$4,$5);
     }
     ;
 
@@ -724,26 +687,19 @@ else_clause:
 
 repeat_stmt:
     KW_REPEAT stmt_list KW_UNTIL expression {
-        $$ = new ASTNode_StmtRepeat();
-        $$->append($2);
-        $$->append($4);
+        $$ = new ASTNode_StmtRepeat($2,$4);
     }
     ;
 
 while_stmt:
     KW_WHILE expression KW_DO stmt {
-        $$ = new ASTNode_StmtWhile();
-        $$->append($2);
-        $$->append($4);
+        $$ = new ASTNode_StmtWhile($2,$4);
     }
     ;
 
 for_stmt:
     KW_FOR NAME OP_ASSIGN expression direction expression KW_DO stmt {
-        $$ = new ASTNode_StmtFor($2,$5->get() == "true");
-        $$->append($4);
-        $$->append($6);
-        $$->append($8);
+        $$ = new ASTNode_StmtFor($2,$5->get() == "true",$4,$6,$8);
     }
     ;
 
@@ -758,9 +714,7 @@ direction:
 
 case_stmt:
     KW_CASE expression KW_OF case_expr_list KW_END {
-        $$ = new ASTNode_StmtCase();
-        $$->append($2);
-        $$->append($4);
+        $$ = new ASTNode_StmtCase($2,$4);
     }
     ;
 
@@ -777,18 +731,13 @@ case_expr_list:
 
 case_expr:
     const_value OP_COLON stmt OP_SEMI {
-        $$ = new ASTNode_CaseExpr();
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_CaseExprLiteral($1,$3);
     }
     | NAME OP_COLON stmt OP_SEMI {
-        $$ = new ASTNode_CaseExpr();
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_CaseExpr($1,$3);
     }
     | KW_ELSE stmt OP_SEMI {
-        $$ = new ASTNode_CaseExpr();
-        $$->append($2);
+        $$ = new ASTNode_CaseExpr($2);
     }
     ;
 
@@ -800,34 +749,22 @@ goto_stmt:
 
 expression:
     expression OP_GE expr {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::GE);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorGE($1,$3);
     }
     | expression OP_GT expr {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::GT);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorGT($1,$3);
     }
     | expression OP_LE expr {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::LE);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorLE($1,$3);
     }
     | expression OP_LT expr {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::LT);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorLT($1,$3);
     }
     | expression OP_EQUAL expr {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::EQUAL);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorEQ($1,$3);
     }
     | expression OP_UNEQUAL expr {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::UNEQUAL);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorNE($1,$3);
     }
     | expr {
         $$ = $1;
@@ -836,19 +773,13 @@ expression:
 
 expr:
     expr OP_PLUS term {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::PLUS);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorAdd($1,$3);
     }
     | expr OP_MINUS term {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::MINUS);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorSub($1,$3);
     }
     | expr KW_OR term {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::OR);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorOr($1,$3);
     }
     | term {
         $$ = $1;
@@ -857,24 +788,16 @@ expr:
 
 term:
     term OP_MUL factor {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::MUL);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorMul($1,$3);
     }
     | term OP_DIV factor {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::DIV);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorDiv($1,$3);
     }
     | term OP_MOD factor {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::MOD);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorMod($1,$3);
     }
     | term KW_AND factor {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::AND);
-        $$->append($1);
-        $$->append($3);
+        $$ = new ASTNode_OperatorAnd($1,$3);
     }
     | factor {
         $$ = $1;
@@ -883,43 +806,36 @@ term:
 
 factor:
     NAME {
-        $$ = new ASTNode_Operand($1,ASTNode_Operand::OperandType::Variable);
+        $$ = new ASTNode_OperandVariable($1);
     }
     | NAME OP_LP args_list OP_RP {
-        $$ = new ASTNode_Operand($1,ASTNode_Operand::OperandType::Function);
-        $$->append($3);
+        $$ = new ASTNode_OperandFunction($1,$3);
     }
     | sys_funct OP_LP args_list OP_RP {
-        $$ = new ASTNode_Operand($1,ASTNode_Operand::OperandType::SystemFunction);
-        $$->append($3);
+        $$ = new ASTNode_OperandSystemFunction($1,$3);
     }
     | const_value {
-        $$ = new ASTNode_Operand("const",ASTNode_Operand::OperandType::Literal);
-        $$->append($1);
+        $$ = new ASTNode_OperandLiteral($1);
     }
     | OP_LP expression OP_RP {
         $$ = $2;
     }
     | OP_NOT factor {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::NOT);
-        $$->append($2);
+        $$ = new ASTNode_OperatorNot($2);
     }
     | OP_MINUS factor {
-        $$ = new ASTNode_Operator(ASTNode_Operator::OperatorType::UMINUS);
-        $$->append($2);
+        $$ = new ASTNode_OperatorMinus($2);
     }
     | NAME OP_LB expression OP_RB {
-        $$ = new ASTNode_Operand($1,ASTNode_Operand::OperandType::ArrayElement);
-        $$->append($3);
+        $$ = new ASTNode_OperandArrayElement($1,$3);
     }
     | NAME OP_DOT NAME {
-        $$ = new ASTNode_Operand($1,ASTNode_Operand::OperandType::RecordMember);
-        $$->append($3);
+        $$ = new ASTNode_OperandRecordMember($1,$3);
     }
     ;
 
 args_list:
-    args {
+    non_empty_args_list {
         $$ = $1;
     }
     | %empty {
@@ -927,16 +843,14 @@ args_list:
     }
     ;
 
-args:
-    args_list OP_COMMA expression {
+non_empty_args_list:
+    non_empty_args_list OP_COMMA expression {
         $$ = $1;
         $$->append($3);
-        $$->count++;
     }
     | expression {
         $$ = new ASTNode_ArgList();
         $$->append($1);
-        $$->count++;
     }
     ;
 
