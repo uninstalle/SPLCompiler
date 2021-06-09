@@ -75,13 +75,9 @@ std::shared_ptr<TypeSymbol> ASTNode_ArrayType::typeGen()
     int size;
     // only supports enum and sub range, other types have a too large range
     if (indexSymbol->exType == TypeSymbol::ExtraTypeInfo::Enumerate)
-    {
         size = indexSymbol->attributes.size();
-    }
     else if (indexSymbol->exType == TypeSymbol::ExtraTypeInfo::SubRange)
-    {
         size = std::stoi(indexSymbol->attributes[1]) - std::stoi(indexSymbol->attributes[0]) + 1;
-    }
     else
     {
         logAndReturn("Array declaration has unsupported index type");
@@ -97,7 +93,22 @@ std::shared_ptr<TypeSymbol> ASTNode_ArrayType::typeGen()
 
 std::shared_ptr<TypeSymbol> ASTNode_RecordType::typeGen()
 {
-    //TODO
+    std::vector<llvm::Type*> types;
+    std::vector<std::string> names;
+    for (auto& i : list->children)
+    {
+        auto fieldDecl = dynamic_cast<ASTNode_FieldDecl*>(i);
+        auto typeSymbol = fieldDecl->type->typeGen();
+        for (auto name : fieldDecl->list->list)
+        {
+            types.push_back(typeSymbol->raw);
+            names.push_back(name);
+        }
+    }
+    auto t = llvm::StructType::get(*IRGenContext, types);
+    auto recordSymbol = std::make_shared<TypeSymbol>(t, TypeSymbol::ExtraTypeInfo::Record);
+    recordSymbol->attributes = names;
+    return recordSymbol;
 }
 
 llvm::Value* ASTNode_TypeDecl::codeGen()

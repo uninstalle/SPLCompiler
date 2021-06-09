@@ -478,8 +478,7 @@ public:
 };
 
 // Operand Record Member
-// children:
-// 1 - ASTNode_Expr: index of the array element
+// children: none
 class ASTNode_OperandRecordMember : public ASTNode_Operand
 {
 public:
@@ -487,7 +486,7 @@ public:
     std::string memberName;
 
     ASTNode_OperandRecordMember(ASTNode_Name* pName, ASTNode_Name* pMember)
-        : name(std::move(pName->name)), memberName(std::move(pName->name))
+        : name(std::move(pName->name)), memberName(std::move(pMember->name))
     {
         delete pName;
         delete pMember;

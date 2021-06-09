@@ -169,7 +169,28 @@ llvm::Value* ASTNode_StmtAssignArrayType::codeGen()
 llvm::Value* ASTNode_StmtAssignRecordType::codeGen()
 {
     buildLabel();
-    //TODO
+
+    auto varSymbol = currentSymbolTable->getVariable(name);
+    if (!varSymbol)
+        return logAndReturn("Unresolved variable: " + name);
+    auto rvalue = value->codeGen();
+    //type check
+    auto typeSymbol = currentSymbolTable->getType(varSymbol->typeName);
+    if (typeSymbol->exType != TypeSymbol::ExtraTypeInfo::Record)
+        return logAndReturn("Not an record: " + name);
+
+    int index = 0;
+    for (auto mName : typeSymbol->attributes)
+    {
+        if (mName == memberName)
+            break;
+        index++;
+    }
+    if (index == typeSymbol->attributes.size())
+        return logAndReturn("Not a valid member of record: " + name + "." + memberName);
+    auto i = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*IRGenContext), index);
+    auto ptrToElement = IRGenBuilder->CreateGEP(typeSymbol->raw, varSymbol->raw, { RetValZero,i });
+    return IRGenBuilder->CreateStore(rvalue, ptrToElement);
 }
 
 llvm::Value* ASTNode_StmtProc::codeGen()
@@ -228,7 +249,30 @@ llvm::Value* ASTNode_StmtProc::codeGen()
                     return logAndReturn("Procedure arg type mismatched: " + name);
                 argsToSend.push_back(var);
             }
-            // TODO
+            else if (refArg->getType() == ASTNodeType::OperandRecordMember)
+            {
+                auto refArgT = dynamic_cast<ASTNode_OperandRecordMember*>(refArg);
+                auto varSymbol = currentSymbolTable->getVariable(refArgT->name);
+                if (!varSymbol)
+                    return logAndReturn("Unresolved arg in procedure: " + name);
+                auto typeSymbol = currentSymbolTable->getType(varSymbol->typeName);
+                if (typeSymbol->exType != TypeSymbol::ExtraTypeInfo::Record)
+                    return logAndReturn("Arg is not an record: " + refArgT->name + " in procedure " + name);
+                int index = 0;
+                for (auto mName : typeSymbol->attributes)
+                {
+                    if (mName == refArgT->memberName)
+                        break;
+                    index++;
+                }
+                if (index == typeSymbol->attributes.size())
+                    return logAndReturn("Not a valid member of record: " + refArgT->name + "." + refArgT->memberName);
+                auto i = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*IRGenContext), index);
+                auto var = IRGenBuilder->CreateGEP(typeSymbol->raw, varSymbol->raw, { RetValZero,i });
+                if (var->getType() != arg.getType())
+                    return logAndReturn("Procedure arg type mismatched: " + name);
+                argsToSend.push_back(var);
+            }
             else
                 return logAndReturn("Procedure expects ref arg but provided with constant: " + name);
         }
@@ -334,11 +378,31 @@ llvm::Value* ASTNode_StmtSysProc::sysRead()
             // global variable array is not array type, so we can't use isArrayTy() here
             auto typeSymbol = currentSymbolTable->getType(varSymbol->typeName);
             if (typeSymbol->exType != TypeSymbol::ExtraTypeInfo::Array)
-                return logAndReturn("Arg is not an array: " + arg->name + " in function " + name);
+                return logAndReturn("Arg is not an array: " + arg->name + " in read");
             auto i = arg->index->codeGen();
             v = IRGenBuilder->CreateGEP(typeSymbol->raw, varSymbol->raw, { RetValZero,i });
         }
-        // TODO
+        else if (expr->getType() == ASTNodeType::OperandRecordMember)
+        {
+            auto arg = dynamic_cast<ASTNode_OperandRecordMember*>(expr);
+            auto varSymbol = currentSymbolTable->getVariable(arg->name);
+            if (!varSymbol)
+                return logAndReturn("Unresolved arg in sysproc read");
+            auto typeSymbol = currentSymbolTable->getType(varSymbol->typeName);
+            if (typeSymbol->exType != TypeSymbol::ExtraTypeInfo::Record)
+                return logAndReturn("Arg is not an record: " + arg->name + " in read");
+            int index = 0;
+            for (auto mName : typeSymbol->attributes)
+            {
+                if (mName == arg->memberName)
+                    break;
+                index++;
+            }
+            if (index == typeSymbol->attributes.size())
+                return logAndReturn("Not a valid member of record: " + arg->name + "." + arg->memberName);
+            auto i = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*IRGenContext), index);
+            v = IRGenBuilder->CreateGEP(typeSymbol->raw, varSymbol->raw, { RetValZero,i });
+        }
         else
             return logAndReturn("Sysproc expects ref arg but provided with constant: read");
 

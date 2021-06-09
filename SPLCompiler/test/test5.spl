@@ -1,8 +1,16 @@
-program arraytest_refrecursiontest;
+program array_record_refrecursiontest;
+type
+	recordtype = record
+		m_int: integer;
+		m_double: real;
+		m_bool: boolean;
+	end
+    ;
 var
 	arr : array [1..5] of integer;
     a : integer;
     i : integer;
+	rec : recordtype;
     
 function go(var index: integer;a : integer): integer;
 begin
@@ -28,8 +36,12 @@ end
 ;
 begin
     i := 0;
+    rec.m_int := 5;
     read(arr[1]);
     a := go(i,arr[1]);
+    writeln(a,' ',i);
+    read(rec.m_int);
+    a := go(i,rec.m_int);
     writeln(a,' ',i);
 end
 .
