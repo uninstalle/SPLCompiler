@@ -132,6 +132,8 @@ OP_LE
 OP_LT
 OP_EQUAL
 OP_UNEQUAL
+OP_AND
+OP_OR
 OP_NOT
 OP_ASSIGN
 OP_MOD
@@ -549,7 +551,7 @@ parameters:
     OP_LP para_decl_list OP_RP {
         $$ = $2;
     }
-    | %empty {
+    | OP_LP OP_RP {
         $$ = new ASTNode_ParaDeclList();
     }
     ;
@@ -777,7 +779,7 @@ expr:
     | expr OP_MINUS term {
         $$ = new ASTNode_OperatorSub($1,$3);
     }
-    | expr KW_OR term {
+    | expr OP_OR term {
         $$ = new ASTNode_OperatorOr($1,$3);
     }
     | term {
@@ -795,7 +797,7 @@ term:
     | term OP_MOD factor {
         $$ = new ASTNode_OperatorMod($1,$3);
     }
-    | term KW_AND factor {
+    | term OP_AND factor {
         $$ = new ASTNode_OperatorAnd($1,$3);
     }
     | factor {

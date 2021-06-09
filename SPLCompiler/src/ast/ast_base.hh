@@ -146,5 +146,5 @@ public:
 
     llvm::Value* codeGen() override { return nullptr; }
     ASTNodeType getType() override { return ASTNodeType::Name; }
-    void print() override { YaccLogger.print("Name " + name); }
+    void print() override { YaccLogger.println("Name " + name); }
 };

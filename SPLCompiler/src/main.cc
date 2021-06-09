@@ -5,12 +5,12 @@
 
 int main(int args, char** argv)
 {
-    if (args > 2)
+    if (args > 3)
     {
         std::cout << "Unexpected number of args.\n";
         return 1;
     }
-    else if (args == 2) //file
+    else if (args > 1) //file
     {
         extern FILE* yyin;
         yyin = fopen(argv[1], "r");
@@ -27,7 +27,7 @@ int main(int args, char** argv)
         yyparse();
     }
 
-    ASTHandler::codeGen();
+    ASTHandler::codeGen(args == 3);
 
     return 0;
 }

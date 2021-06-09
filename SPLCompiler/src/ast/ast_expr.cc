@@ -6,7 +6,7 @@
 // return false if some operand is not computable type (int or real)
 bool ASTNode_Operator::intPromotion(llvm::Value*& LHS, llvm::Value*& RHS)
 {
-    bool LI = isInt(LHS), LD = isDouble(LHS), RI = isInt(LHS), RD = isDouble(RHS);
+    bool LI = isInt(LHS), LD = isDouble(LHS), RI = isInt(RHS), RD = isDouble(RHS);
 
     // LHS or RHS is of not computable type
     if (!((LI || LD) && (RI || RD)))
@@ -263,7 +263,7 @@ llvm::Value* ASTNode_OperatorNot::codeGen()
     if (!(isInt(L) || isDouble(L)))
         return logAndReturn("Invalid operand in not");
 
-    return IRGenBuilder->CreateNot(L, "or");
+    return IRGenBuilder->CreateNot(L, "not");
 }
 
 llvm::Value* ASTNode_OperandLiteral::codeGen()
@@ -276,7 +276,14 @@ llvm::Value* ASTNode_OperandVariable::codeGen()
     // constant
     auto cSymbol = currentSymbolTable->getConstant(name);
     if (cSymbol)
-        return cSymbol->raw;
+    {
+        // global constant is variable
+        if (cSymbol->isGlobal)
+            return IRGenBuilder->CreateLoad(cSymbol->raw, name);
+        else
+            // local constant is value stored in symbol table
+            return cSymbol->raw;
+    }
     // variable
     auto vSymbol = currentSymbolTable->getVariable(name);
     if (vSymbol)
@@ -295,7 +302,7 @@ llvm::Value* ASTNode_OperandFunction::codeGen()
 
     // function without args
     if (fun->arg_size() == 0)
-        return IRGenBuilder->CreateCall(fun, llvm::None, name + "_call");
+        return IRGenBuilder->CreateCall(fun, llvm::None, name + "_ret");
 
     // function expected args but stmt has no args
     if (args->children.empty())
@@ -343,7 +350,7 @@ llvm::Value* ASTNode_OperandFunction::codeGen()
         }
     }
 
-    return IRGenBuilder->CreateCall(fun, argsToSend, name + "_call");
+    return IRGenBuilder->CreateCall(fun, argsToSend, name + "_ret");
 }
 
 llvm::Value* ASTNode_OperandSystemFunction::codeGen()

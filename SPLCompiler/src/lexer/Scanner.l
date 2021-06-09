@@ -89,7 +89,9 @@ op_le "<="
 op_lt "<"
 op_equal "="
 op_unequal "<>"
-op_not NOT
+op_and AND|"&"
+op_or OR|"|"
+op_not NOT|"!"
 op_assign ":="
 op_mod MOD|"%"
 op_dotdot ".."
@@ -103,7 +105,7 @@ name [a-zA-Z][_a-zA-Z0-9]*
 const_real -?[0-9]+("."[0-9]+|e-?[0-9]+)
 const_integer -?[0-9]+
 const_char '.'
-const_string '.{0,255}'
+const_string '[^']{0,255}'
 
 /* white space */
 ws [ \t]+
@@ -490,6 +492,16 @@ unrecognized .
 {op_unequal} {
     colno += yyleng;
     return OP_UNEQUAL;
+}
+
+{op_and} {
+    colno += yyleng;
+    return OP_AND;
+}
+
+{op_or} {
+    colno += yyleng;
+    return OP_OR;
 }
 
 {op_not} {

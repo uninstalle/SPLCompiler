@@ -12,7 +12,7 @@ class ASTNode;
 
 class ASTHandler
 {
-    static void initializeIRGenerator(const std::string& name);
+    static void initializeIRGenerator(const std::string& name, bool optimize);
     static void recursivePrintAST(ASTNode* head, int depth);
     static void printIR();
     static void printAST();
@@ -20,5 +20,5 @@ class ASTHandler
 public:
     ASTHandler() = delete;
     static void setASTHead(ASTNode* head);
-    static void codeGen();
+    static void codeGen(bool optimize);
 };

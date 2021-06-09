@@ -82,6 +82,7 @@ class SymbolTable
     std::map<std::string, std::shared_ptr<FunctionSymbol>> function;
 
     static std::vector<std::shared_ptr<SymbolTable>> ARStack;
+    static std::map<std::string, llvm::Constant*> GlobalStringMap;
 
     std::shared_ptr<SymbolTable> prev = nullptr;
 
@@ -139,6 +140,10 @@ public:
         else
             return res->second;
     }
+    void removeVariable(const std::string& name)
+    {
+        variable.erase(name);
+    }
 
     void insertFunction(const std::string& name, FunctionSymbol value)
     {
@@ -159,10 +164,11 @@ public:
     }
 
     static void setupNewTable();
-
     static void removeCurrentTable();
-
     static void initialize();
+
+    static void insertGlobalString(const std::string& str, llvm::Constant* gs);
+    static llvm::Constant* getGlobalString(const std::string& str);
 };
 
 extern std::shared_ptr<SymbolTable> GlobalTable;

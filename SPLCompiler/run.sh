@@ -2,8 +2,12 @@
 if [ $# -eq 0 ]
 then
     ./bin/main
-else
-    ./bin/main $1
+else if [ $# -eq 1 ]
+    then
+        ./bin/main $1
+    else
+        ./bin/main $1 $2
+    fi
 fi
 #llvm-as ./out.ll
 #llc ./out.bc

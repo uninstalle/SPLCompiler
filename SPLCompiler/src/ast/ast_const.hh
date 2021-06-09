@@ -111,7 +111,7 @@ public:
     llvm::Constant* codeGen() override;
 
     ASTNodeType getType() override { return ASTNodeType::ConstBoolean; }
-    void print() override { YaccLogger.print("ConstBoolean " + toString()); }
+    void print() override { YaccLogger.println("ConstBoolean " + toString()); }
 };
 
 // Constant Declaration

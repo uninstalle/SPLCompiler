@@ -15,7 +15,7 @@ std::unique_ptr<llvm::legacy::FunctionPassManager> IRGenFPM;
 llvm::Constant* RetValZero; // i32 0
 static ASTNode* ASTHead = nullptr;
 
-void ASTHandler::initializeIRGenerator(const std::string& name)
+void ASTHandler::initializeIRGenerator(const std::string& name, bool optimize)
 {
     IRGenContext = std::make_unique<llvm::LLVMContext>();
     IRGenBuilder = std::make_unique<llvm::IRBuilder<>>(*IRGenContext);
@@ -23,10 +23,13 @@ void ASTHandler::initializeIRGenerator(const std::string& name)
     IRGenFPM = std::make_unique<llvm::legacy::FunctionPassManager>(IRGenModule.get());
     RetValZero = llvm::Constant::getNullValue(llvm::Type::getInt32Ty(*IRGenContext));
 
-    IRGenFPM->add(llvm::createInstructionCombiningPass());
-    IRGenFPM->add(llvm::createReassociatePass());
-    IRGenFPM->add(llvm::createGVNPass());
-    IRGenFPM->add(llvm::createCFGSimplificationPass());
+    if (optimize)
+    {
+        IRGenFPM->add(llvm::createInstructionCombiningPass());
+        IRGenFPM->add(llvm::createReassociatePass());
+        IRGenFPM->add(llvm::createGVNPass());
+        IRGenFPM->add(llvm::createCFGSimplificationPass());
+    }
     IRGenFPM->doInitialization();
 }
 
@@ -61,14 +64,14 @@ void ASTHandler::setASTHead(ASTNode* head)
     ASTHead = head;
 }
 
-void ASTHandler::codeGen()
+void ASTHandler::codeGen(bool optimize)
 {
     if (!ASTHead)
         return;
     printAST();
 
     SymbolTable::initialize();
-    initializeIRGenerator("what");
+    initializeIRGenerator("what", optimize);
 
     if (ASTHead->codeGen())
     {

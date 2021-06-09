@@ -4,6 +4,7 @@ std::shared_ptr<SymbolTable> GlobalTable;
 std::shared_ptr<SymbolTable> currentSymbolTable;
 
 std::vector<std::shared_ptr<SymbolTable>> SymbolTable::ARStack;
+std::map<std::string, llvm::Constant*> SymbolTable::GlobalStringMap;
 
 void SymbolTable::setupNewTable()
 {
@@ -30,3 +31,18 @@ void SymbolTable::initialize()
     currentSymbolTable = GlobalTable;
     ARStack.push_back(GlobalTable);
 }
+
+void SymbolTable::insertGlobalString(const std::string& str, llvm::Constant* gs)
+{
+    GlobalStringMap.insert(std::make_pair(str, gs));
+}
+
+llvm::Constant* SymbolTable::getGlobalString(const std::string& str)
+{
+    auto res = GlobalStringMap.find(str);
+    if (res == GlobalStringMap.end())
+        return nullptr;
+    else
+        return res->second;
+}
+

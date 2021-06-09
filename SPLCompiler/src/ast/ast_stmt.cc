@@ -5,13 +5,17 @@
 
 void ASTNode_Stmt::buildLabel()
 {
+    if (!hasLabel)
+        return;
     auto fun = IRGenBuilder->GetInsertBlock()->getParent();
     auto bb = llvm::BasicBlock::Create(*IRGenContext, std::to_string(label), fun);
+    IRGenBuilder->CreateBr(bb);
     IRGenBuilder->SetInsertPoint(bb);
 }
 
 llvm::Value* ASTNode_StmtCompound::codeGen()
 {
+    buildLabel();
     // empty code block, return
     if (list->children.empty())
         return RetValZero;
@@ -39,7 +43,7 @@ static void insertExitCode()
         // not declared yet, declare it
         std::vector<llvm::Type*> args;
         args.push_back(llvm::Type::getInt32Ty(*IRGenContext));
-        auto funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(*IRGenContext), args, true);
+        auto funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(*IRGenContext), args, false);
 
         proc = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, "exit", IRGenModule.get());
         proc->setCallingConv(llvm::CallingConv::C);
@@ -47,13 +51,29 @@ static void insertExitCode()
 
     std::vector<llvm::Value*> argsToSend;
     argsToSend.push_back(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*IRGenContext), 1, true));
-    IRGenBuilder->CreateCall(proc, argsToSend, name + "_call");
+    IRGenBuilder->CreateCall(proc, argsToSend);
 
 }
 
+void implicitTypeConversion(llvm::Value*& LHS, llvm::Value*& RHS)
+{
+    bool LI = LHS->getType()->getPointerElementType()->isIntegerTy(),
+        LD = LHS->getType()->getPointerElementType()->isDoubleTy(),
+        RI = RHS->getType()->isIntegerTy(),
+        RD = RHS->getType()->isDoubleTy();
+
+    if (LI && RD)
+        RHS = IRGenBuilder->CreateFPToSI(RHS, LHS->getType()->getPointerElementType(), "fptosi");
+    else if (LD && RI)
+        RHS = IRGenBuilder->CreateSIToFP(RHS, LHS->getType()->getPointerElementType(), "sitofp");
+    else if (LI && RI)
+        RHS = IRGenBuilder->CreateSExtOrTrunc(RHS, LHS->getType()->getPointerElementType(), "intcvt");
+}
 
 llvm::Value* ASTNode_StmtAssignSimpleType::codeGen()
 {
+    buildLabel();
+
     auto varSymbol = currentSymbolTable->getVariable(name);
     if (!varSymbol)
         return logAndReturn("Unresolved variable: " + name);
@@ -61,13 +81,13 @@ llvm::Value* ASTNode_StmtAssignSimpleType::codeGen()
     // type check
     auto typeSymbol = currentSymbolTable->getType(varSymbol->typeName);
     // we can only handle simple type assignment,
-    // thus array and record type(not their element types) are banned
+    // thus array and record type(not their element types) are regarded as error
     switch (typeSymbol->exType)
     {
     case TypeSymbol::ExtraTypeInfo::Base:
         rvalue = value->codeGen();
-        IRGenBuilder->CreateStore(rvalue, varSymbol->raw);
-        return rvalue;
+        implicitTypeConversion(varSymbol->raw, rvalue);
+        break;
     case TypeSymbol::ExtraTypeInfo::Enumerate:
     {
         // rvalue will be taken as variable operand when parsing
@@ -80,7 +100,7 @@ llvm::Value* ASTNode_StmtAssignSimpleType::codeGen()
         if (actualValue == typeSymbol->attributes.size())
             return logAndReturn("Invalid enumerate tag in assignment of variable: " + name);
         rvalue = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*IRGenContext), actualValue, true);
-        return rvalue;
+        break;
     }
     case TypeSymbol::ExtraTypeInfo::SubRange:
     {
@@ -89,26 +109,30 @@ llvm::Value* ASTNode_StmtAssignSimpleType::codeGen()
         // add a constant mark in expr nodes, this can also help implement
         // constant folding.
 
-        auto v = value->codeGen();
+        rvalue = value->codeGen();
+        implicitTypeConversion(varSymbol->raw, rvalue);
         // runtime check
         // maybe should not?
         auto upperBound = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*IRGenContext),
-            std::stoi(typeSymbol->attributes[0]));
+            std::stoi(typeSymbol->attributes[0]), true);
         auto lowerBound = llvm::ConstantInt::get(llvm::Type::getInt32Ty(*IRGenContext),
-            std::stoi(typeSymbol->attributes[1]));
+            std::stoi(typeSymbol->attributes[1]), true);
         auto exitBB = llvm::BasicBlock::Create(*IRGenContext, "sbrngchkexit");
         auto contBB = llvm::BasicBlock::Create(*IRGenContext, "sbrngchkcont");
-        auto lbcond = IRGenBuilder->CreateICmpSLT(v, lowerBound, "sbrnglbchk");
-        IRGenBuilder->CreateCondBr(lbcond, exitBB, contBB);
-        auto ubcond = IRGenBuilder->CreateICmpSGT(v, upperBound, "sbrngubchk");
-        IRGenBuilder->CreateCondBr(ubcond, exitBB, contBB);
+        auto lbcond = IRGenBuilder->CreateICmpSLE(rvalue, lowerBound, "sbrnglbchk");
+        auto ubcond = IRGenBuilder->CreateICmpSGE(rvalue, upperBound, "sbrngubchk");
+        auto cond = IRGenBuilder->CreateAnd(lbcond, ubcond, "sbrngchk");
+        IRGenBuilder->CreateCondBr(cond, contBB, exitBB);
         IRGenBuilder->GetInsertBlock()->getParent()->getBasicBlockList().push_back(exitBB);
         IRGenBuilder->SetInsertPoint(exitBB);
         // call c stdlib.h exit(), not the best way
         insertExitCode();
+        // never reach it though
+        IRGenBuilder->CreateBr(contBB);
+        // continue part
         IRGenBuilder->GetInsertBlock()->getParent()->getBasicBlockList().push_back(contBB);
         IRGenBuilder->SetInsertPoint(contBB);
-        return v;
+        break;
     }
     case TypeSymbol::ExtraTypeInfo::Array:
         return logAndReturn("Trying to assign an array");
@@ -118,20 +142,27 @@ llvm::Value* ASTNode_StmtAssignSimpleType::codeGen()
     case  TypeSymbol::ExtraTypeInfo::Record:
         return logAndReturn("Trying to assign a record");
     }
+    // implicit type conversion
+    IRGenBuilder->CreateStore(rvalue, varSymbol->raw);
+    return rvalue;
 }
 
 llvm::Value* ASTNode_StmtAssignArrayType::codeGen()
 {
+    buildLabel();
     //TODO
 }
 
 llvm::Value* ASTNode_StmtAssignRecordType::codeGen()
 {
+    buildLabel();
     //TODO
 }
 
 llvm::Value* ASTNode_StmtProc::codeGen()
 {
+    buildLabel();
+
     auto symbol = currentSymbolTable->getFunction(name);
     if (!symbol)
         return logAndReturn("Procedure not found: " + name);
@@ -139,7 +170,7 @@ llvm::Value* ASTNode_StmtProc::codeGen()
 
     // function without args
     if (proc->arg_size() == 0)
-        return IRGenBuilder->CreateCall(proc, llvm::None, name + "_call");
+        return IRGenBuilder->CreateCall(proc, llvm::None);
 
     // function expected args but stmt has no args
     if (args->children.empty())
@@ -223,8 +254,14 @@ llvm::Value* ASTNode_StmtSysProc::sysWrite(bool ln)
     if (ln)
         format += "\n";
 
-    argsToSend.insert(argsToSend.begin(), IRGenBuilder->CreateGlobalStringPtr(format));
-    IRGenBuilder->CreateCall(proc, argsToSend, name + "_call");
+    auto globalstr = SymbolTable::getGlobalString(format);
+    if (!globalstr)
+    {
+        globalstr = IRGenBuilder->CreateGlobalStringPtr(format);
+        SymbolTable::insertGlobalString(format, globalstr);
+    }
+    argsToSend.insert(argsToSend.begin(), globalstr);
+    IRGenBuilder->CreateCall(proc, argsToSend);
 
     return RetValZero;
 }
@@ -273,16 +310,25 @@ llvm::Value* ASTNode_StmtSysProc::sysRead()
         }
         // TODO
         else
-            return logAndReturn("Sysfunct expects ref arg but provided with constant: read");
+            return logAndReturn("Sysproc expects ref arg but provided with constant: read");
     }
-    argsToSend.insert(argsToSend.begin(), IRGenBuilder->CreateGlobalStringPtr(format));
-    IRGenBuilder->CreateCall(proc, argsToSend, name + "_call");
+
+    auto globalstr = SymbolTable::getGlobalString(format);
+    if (!globalstr)
+    {
+        globalstr = IRGenBuilder->CreateGlobalStringPtr(format);
+        SymbolTable::insertGlobalString(format, globalstr);
+    }
+    argsToSend.insert(argsToSend.begin(), globalstr);
+    IRGenBuilder->CreateCall(proc, argsToSend);
 
     return RetValZero;
 }
 
 llvm::Value* ASTNode_StmtSysProc::codeGen()
 {
+    buildLabel();
+
     // function expected args but stmt has no args
     if (args->children.empty())
         return logAndReturn("SysProc expects args but not provided: " + name);
@@ -299,6 +345,8 @@ llvm::Value* ASTNode_StmtSysProc::codeGen()
 
 llvm::Value* ASTNode_StmtIf::codeGen()
 {
+    buildLabel();
+
     auto condV = cond->codeGen();
     if (!condV)
         return logAndReturn("If stmt has invalid condition");
@@ -340,6 +388,8 @@ llvm::Value* ASTNode_StmtIf::codeGen()
 
 llvm::Value* ASTNode_StmtRepeat::codeGen()
 {
+    buildLabel();
+
     // get current function that the if stmt belonged to
     auto fun = IRGenBuilder->GetInsertBlock()->getParent();
     auto loopBB = llvm::BasicBlock::Create(*IRGenContext, "repeat", fun);
@@ -372,6 +422,8 @@ llvm::Value* ASTNode_StmtRepeat::codeGen()
 
 llvm::Value* ASTNode_StmtWhile::codeGen()
 {
+    buildLabel();
+
     // get current function that the if stmt belonged to
     auto fun = IRGenBuilder->GetInsertBlock()->getParent();
     auto condBB = llvm::BasicBlock::Create(*IRGenContext, "whilecond", fun);
@@ -411,6 +463,8 @@ llvm::Value* ASTNode_StmtWhile::codeGen()
 
 llvm::Value* ASTNode_StmtFor::codeGen()
 {
+    buildLabel();
+
     auto beginV = begin->codeGen();
     if (!beginV)
         return logAndReturn("For stmt has invalid begin value");
@@ -418,15 +472,16 @@ llvm::Value* ASTNode_StmtFor::codeGen()
     if (!beginV->getType()->isIntegerTy())
         return logAndReturn("For stmt only supports begin value of integer");
 
-    // get current function that the if stmt belonged to
     auto fun = IRGenBuilder->GetInsertBlock()->getParent();
-    auto loopBB = llvm::BasicBlock::Create(*IRGenContext, "for", fun);
-    IRGenBuilder->CreateBr(loopBB);
-    IRGenBuilder->SetInsertPoint(loopBB);
-
     auto stepVar = allocInEntryBlock(fun, name, beginV->getType());
     IRGenBuilder->CreateStore(beginV, stepVar);
     currentSymbolTable->insertVariable(name, { stepVar,"integer" });
+
+    auto condBB = llvm::BasicBlock::Create(*IRGenContext, "forcond", fun);
+    auto loopBB = llvm::BasicBlock::Create(*IRGenContext, "for");
+    auto contBB = llvm::BasicBlock::Create(*IRGenContext, "forcont");
+    IRGenBuilder->CreateBr(condBB);
+    IRGenBuilder->SetInsertPoint(condBB);
 
     auto endV = end->codeGen();
     if (!endV)
@@ -435,28 +490,41 @@ llvm::Value* ASTNode_StmtFor::codeGen()
     if (!endV->getType()->isIntegerTy())
         return logAndReturn("For stmt only supports end value of integer");
 
-    if (!body->codeGen())
-        return logAndReturn("For stmt has invalid stmt");
-
     auto curVal = IRGenBuilder->CreateLoad(stepVar, name);
-    auto nextVal = this->isPositive ? IRGenBuilder->CreateAdd(curVal, llvm::ConstantInt::get(curVal->getType(), 1), "stepping") : IRGenBuilder->CreateSub(curVal, llvm::ConstantInt::get(curVal->getType(), 1), "stepping");
-
-    IRGenBuilder->CreateStore(nextVal, stepVar);
 
     // if stepping++, check if end value <= stepping
     // if stepping--, check if end value >= stepping
     // if loopCond is true, loop again
-    auto loopCond = this->isPositive ? IRGenBuilder->CreateICmpSLE(endV, nextVal, "forcond") : IRGenBuilder->CreateICmpSGE(endV, nextVal, "forcond");
+    auto loopCond = this->isPositive ?
+        IRGenBuilder->CreateICmpSLE(curVal, endV, "forcond") :
+        IRGenBuilder->CreateICmpSGE(curVal, endV, "forcond");
 
-    llvm::BasicBlock* contBB = llvm::BasicBlock::Create(*IRGenContext, "forcont", fun);
     IRGenBuilder->CreateCondBr(loopCond, loopBB, contBB);
+
+    fun->getBasicBlockList().push_back(loopBB);
+    IRGenBuilder->SetInsertPoint(loopBB);
+
+    if (!body->codeGen())
+        return logAndReturn("For stmt has invalid stmt");
+
+    auto nextVal = this->isPositive ?
+        IRGenBuilder->CreateAdd(curVal, llvm::ConstantInt::get(curVal->getType(), 1), "stepping") :
+        IRGenBuilder->CreateSub(curVal, llvm::ConstantInt::get(curVal->getType(), 1), "stepping");
+    IRGenBuilder->CreateStore(nextVal, stepVar);
+
+    IRGenBuilder->CreateBr(condBB);
+
+    fun->getBasicBlockList().push_back(contBB);
     IRGenBuilder->SetInsertPoint(contBB);
+    currentSymbolTable->removeVariable(name);
 
     return RetValZero;
 }
 
 llvm::Value* ASTNode_StmtCase::codeGen()
 {
+    buildLabel();
+
     auto condV = cond->codeGen();
     if (!condV)
         return logAndReturn("Case stmt has invalid condition");
@@ -524,13 +592,15 @@ llvm::Value* ASTNode_StmtCase::codeGen()
 
 llvm::Value* ASTNode_StmtGoto::codeGen()
 {
+    buildLabel();
+
     // only look for labels in the function body located in.
     // still, this may not reach labels after it.
     // should use a jump table to store all labeled basic blocks pointers.
     auto fun = IRGenBuilder->GetInsertBlock()->getParent();
     llvm::BasicBlock* gotoBB = nullptr;
     for (auto& bb : fun->getBasicBlockList())
-        if (bb.getName() == std::to_string(label))
+        if (bb.getName() == gotoLabel)
         {
             gotoBB = &bb;
             break;
@@ -542,5 +612,5 @@ llvm::Value* ASTNode_StmtGoto::codeGen()
         return RetValZero;
     }
     else
-        return logAndReturn("Invalid label in goto stmt: " + std::to_string(label));
+        return logAndReturn("Invalid label in goto stmt: " + gotoLabel);
 }
