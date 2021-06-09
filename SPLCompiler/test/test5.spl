@@ -1,0 +1,38 @@
+program arraytest_refrecursiontest;
+var
+	arr : array [1..5] of integer;
+    a : integer;
+    i : integer;
+    
+function go(var index: integer;a : integer): integer;
+begin
+    index := index + 1;
+	if a = 1 then
+	begin
+		go := 1;
+	end
+	else
+	begin
+		if a = 2 then
+		begin
+			go := 1;
+		end
+		else
+		begin
+			go := go(i,a - 1) + go(i,a - 2);
+		end
+		;
+	end
+	;
+end
+;
+begin
+    i := 0;
+    read(arr[1]);
+    a := go(i,arr[1]);
+    writeln(a,' ',i);
+end
+.
+
+
+

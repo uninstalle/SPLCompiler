@@ -1,4 +1,4 @@
-program hello;
+program instructiontest;
 const
 	const1 = true;
 	const2 = 2.2;

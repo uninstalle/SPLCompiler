@@ -150,7 +150,20 @@ llvm::Value* ASTNode_StmtAssignSimpleType::codeGen()
 llvm::Value* ASTNode_StmtAssignArrayType::codeGen()
 {
     buildLabel();
-    //TODO
+
+    auto varSymbol = currentSymbolTable->getVariable(name);
+    if (!varSymbol)
+        return logAndReturn("Unresolved variable: " + name);
+    auto rvalue = value->codeGen();
+    auto i = index->codeGen();
+    // type check
+    auto typeSymbol = currentSymbolTable->getType(varSymbol->typeName);
+    if (typeSymbol->exType != TypeSymbol::ExtraTypeInfo::Array)
+        return logAndReturn("Not an array: " + name);
+
+    auto ptrToElement = IRGenBuilder->CreateGEP(typeSymbol->raw, varSymbol->raw, { RetValZero, i });
+    IRGenBuilder->CreateStore(rvalue, ptrToElement);
+    return rvalue;
 }
 
 llvm::Value* ASTNode_StmtAssignRecordType::codeGen()
@@ -191,10 +204,26 @@ llvm::Value* ASTNode_StmtProc::codeGen()
             if (refArg->getType() == ASTNodeType::OperandVariable)
             {
                 auto refArgT = dynamic_cast<ASTNode_OperandVariable*>(refArg);
-                auto symbol = currentSymbolTable->getVariable(refArgT->name);
-                if (!symbol)
-                    return logAndReturn("Unresolved arg in function: " + name);
-                auto var = reinterpret_cast<llvm::AllocaInst*>(symbol->raw);
+                auto varSymbol = currentSymbolTable->getVariable(refArgT->name);
+                if (!varSymbol)
+                    return logAndReturn("Unresolved arg: " + refArgT->name + " in procedure " + name);
+                auto var = reinterpret_cast<llvm::AllocaInst*>(varSymbol->raw);
+                if (var->getType() != arg.getType())
+                    return logAndReturn("Procedure arg type mismatched: " + name);
+                argsToSend.push_back(var);
+            }
+            else if (refArg->getType() == ASTNodeType::OperandArrayElement)
+            {
+                auto refArgT = dynamic_cast<ASTNode_OperandArrayElement*>(refArg);
+                auto varSymbol = currentSymbolTable->getVariable(refArgT->name);
+                if (!varSymbol)
+                    return logAndReturn("Unresolved arg in procedure: " + name);
+                // global variable array is not array type, so we can't use isArrayTy() here
+                auto typeSymbol = currentSymbolTable->getType(varSymbol->typeName);
+                if (typeSymbol->exType != TypeSymbol::ExtraTypeInfo::Array)
+                    return logAndReturn("Arg is not an array: " + refArgT->name + " in procedure " + name);
+                auto i = refArgT->index->codeGen();
+                auto var = IRGenBuilder->CreateGEP(typeSymbol->raw, varSymbol->raw, { RetValZero,i });
                 if (var->getType() != arg.getType())
                     return logAndReturn("Procedure arg type mismatched: " + name);
                 argsToSend.push_back(var);
@@ -285,6 +314,7 @@ llvm::Value* ASTNode_StmtSysProc::sysRead()
 
     for (auto expr : args->children)
     {
+        llvm::Value* v;
         // if the arg is a ref, it must be a lvalue, thus it only can be:
         // OperandVariable, OperandArrayElement, OperandRecordMember
         if (expr->getType() == ASTNodeType::OperandVariable)
@@ -293,24 +323,37 @@ llvm::Value* ASTNode_StmtSysProc::sysRead()
             auto symbol = currentSymbolTable->getVariable(arg->name);
             if (!symbol)
                 logAndReturn("Unresolved arg in sysproc read");
-            auto v = symbol->raw;
-
-            if (v->getType()->getPointerElementType()->isDoubleTy())
-                format += "%lf";
-            if (v->getType()->getPointerElementType()->isIntegerTy())
-            {
-                if (v->getType()->getPointerElementType()->getIntegerBitWidth() == 32)
-                    format += "%d";
-                else if (v->getType()->getPointerElementType()->getIntegerBitWidth() == 8)
-                    format += "%c";
-                else if (v->getType()->getPointerElementType()->getIntegerBitWidth() == 1)
-                    format += "%u";
-            }
-            argsToSend.push_back(v);
+            v = symbol->raw;
+        }
+        else if (expr->getType() == ASTNodeType::OperandArrayElement)
+        {
+            auto arg = dynamic_cast<ASTNode_OperandArrayElement*>(expr);
+            auto varSymbol = currentSymbolTable->getVariable(arg->name);
+            if (!varSymbol)
+                return logAndReturn("Unresolved arg in sysproc read");
+            // global variable array is not array type, so we can't use isArrayTy() here
+            auto typeSymbol = currentSymbolTable->getType(varSymbol->typeName);
+            if (typeSymbol->exType != TypeSymbol::ExtraTypeInfo::Array)
+                return logAndReturn("Arg is not an array: " + arg->name + " in function " + name);
+            auto i = arg->index->codeGen();
+            v = IRGenBuilder->CreateGEP(typeSymbol->raw, varSymbol->raw, { RetValZero,i });
         }
         // TODO
         else
             return logAndReturn("Sysproc expects ref arg but provided with constant: read");
+
+        if (v->getType()->getPointerElementType()->isDoubleTy())
+            format += "%lf";
+        if (v->getType()->getPointerElementType()->isIntegerTy())
+        {
+            if (v->getType()->getPointerElementType()->getIntegerBitWidth() == 32)
+                format += "%d";
+            else if (v->getType()->getPointerElementType()->getIntegerBitWidth() == 8)
+                format += "%c";
+            else if (v->getType()->getPointerElementType()->getIntegerBitWidth() == 1)
+                format += "%u";
+        }
+        argsToSend.push_back(v);
     }
 
     auto globalstr = SymbolTable::getGlobalString(format);

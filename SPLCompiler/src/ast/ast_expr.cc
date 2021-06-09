@@ -323,13 +323,30 @@ llvm::Value* ASTNode_OperandFunction::codeGen()
             // if the arg is a ref, it must be a lvalue, thus it only can be:
             // OperandVariable, OperandArrayElement, OperandRecordMember
             auto refArg = *argNode++;
+
             if (refArg->getType() == ASTNodeType::OperandVariable)
             {
                 auto refArgT = dynamic_cast<ASTNode_OperandVariable*>(refArg);
-                auto symbol = currentSymbolTable->getVariable(refArgT->name);
-                if (!symbol)
+                auto varSymbol = currentSymbolTable->getVariable(refArgT->name);
+                if (!varSymbol)
+                    return logAndReturn("Unresolved arg: " + refArgT->name + " in function " + name);
+                auto var = reinterpret_cast<llvm::AllocaInst*>(varSymbol->raw);
+                if (var->getType() != arg.getType())
+                    return logAndReturn("Function arg type mismatched: " + name);
+                argsToSend.push_back(var);
+            }
+            else if (refArg->getType() == ASTNodeType::OperandArrayElement)
+            {
+                auto refArgT = dynamic_cast<ASTNode_OperandArrayElement*>(refArg);
+                auto varSymbol = currentSymbolTable->getVariable(refArgT->name);
+                if (!varSymbol)
                     return logAndReturn("Unresolved arg in function: " + name);
-                auto var = reinterpret_cast<llvm::AllocaInst*>(symbol->raw);
+                // global variable array is not array type, so we can't use isArrayTy() here
+                auto typeSymbol = currentSymbolTable->getType(varSymbol->typeName);
+                if (typeSymbol->exType != TypeSymbol::ExtraTypeInfo::Array)
+                    return logAndReturn("Arg is not an array: " + refArgT->name + " in function " + name);
+                auto i = refArgT->index->codeGen();
+                auto var = IRGenBuilder->CreateGEP( typeSymbol->raw  , varSymbol->raw, { RetValZero,i });
                 if (var->getType() != arg.getType())
                     return logAndReturn("Function arg type mismatched: " + name);
                 argsToSend.push_back(var);
@@ -396,7 +413,17 @@ llvm::Value* ASTNode_OperandSystemFunction::codeGen()
 
 llvm::Value* ASTNode_OperandArrayElement::codeGen()
 {
-    //TODO
+    auto varSymbol = currentSymbolTable->getVariable(name);
+    if (!varSymbol)
+        return logAndReturn("Unresolved variable: " + name);
+    auto i = index->codeGen();
+    // type check
+    auto typeSymbol = currentSymbolTable->getType(varSymbol->typeName);
+    if (typeSymbol->exType != TypeSymbol::ExtraTypeInfo::Array)
+        return logAndReturn("Not an array: " + name);
+
+    auto ptrToElement = IRGenBuilder->CreateGEP(typeSymbol->raw, varSymbol->raw, { RetValZero,i });
+    return IRGenBuilder->CreateLoad(ptrToElement);
 }
 
 llvm::Value* ASTNode_OperandRecordMember::codeGen()

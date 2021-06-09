@@ -5,6 +5,12 @@
 llvm::AllocaInst* allocInEntryBlock(llvm::Function* fun, const std::string& varName, llvm::Type* type)
 {
     llvm::IRBuilder<> builder(&fun->getEntryBlock(), fun->getEntryBlock().begin());
+    if (type->isArrayTy())
+    {
+        CodeGenLogger.println("!" + std::to_string(type->getArrayNumElements()));
+        return builder.CreateAlloca(type, llvm::ConstantInt::get(llvm::Type::getInt32Ty(*IRGenContext), type->getArrayNumElements()), varName);
+    }
+
     return builder.CreateAlloca(type, nullptr, varName);
 }
 

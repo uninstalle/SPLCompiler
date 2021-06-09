@@ -1,4 +1,4 @@
-program hello;
+program sysfunctest;
 var
 	i : integer;
 	r : real;
