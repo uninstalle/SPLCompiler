@@ -86,9 +86,76 @@
 
 \subsection*{编译环境}
 \addcontentsline{toc}{subsection}{编译环境}
+\begin{itemize}
+    \item Prebuilt environment: Windows Sub Linux Ubuntu 20.04
+    \item Lexer: flex 2.6.4
+    \item Parser: bison 3.5.1
+    \item Framework: LLVM 12.0.0
+\end{itemize}
 
 \subsection*{文件结构}
 \addcontentsline{toc}{subsection}{文件结构}
+\begin{lstlisting}
+Root
+│  build.sh  //编译compiler
+│  clean.sh  //清理产生的compiler及中间文件
+│  run.sh  //运行compiler并将产生的LLVM IR编译为可执行文件
+│
+├─bin
+│  └─ main  //预编译的compiler
+├─src
+│  │  main.cc  //入口
+│  │  Parser.cc  //bison产生的中间文件
+│  │  Parser.hh  //bison产生的中间文件
+│  │  Scanner.cc  //flex产生的中间文件
+│  │
+│  ├─ast
+│  │      ast.hh  //include-all header
+│  │      ast_base.cc
+│  │      ast_base.hh //基类node
+│  │      ast_const.cc
+│  │      ast_const.hh  //常量node，包含各种常量从token到llvm::Value的转换
+│  │      ast_expr.cc
+│  │      ast_expr.hh  //表达式node，包含表达式中会出现的所有token的解析
+│  │      ast_function.cc
+│  │      ast_function.hh  //函数node，包含函数的声明与定义
+│  │      ast_routine.cc
+│  │      ast_routine.hh  //例程node，包含routine和subroutine的实现
+│  │      ast_stmt.cc
+│  │      ast_stmt.hh  //语句node，包含赋值、流程控制、过程调用等
+│  │      ast_type.cc
+│  │      ast_type.hh  //类型node，包含类型的解析和从token到llvm::Type的转换
+│  │      ast_variable.cc
+│  │      ast_variable.hh  //变量node，包含变量的定义与内存分配
+│  │
+│  ├─irgen
+│  │      generator.cc
+│  │      generator.hh  //AST的操作者，实现AST的生成、AST的输出、IR的生成
+│  │      table.cc
+│  │      table.hh  //符号表的定义
+│  │
+│  ├─lexer
+│  │      Scanner.l  //词法分析器
+│  │
+│  ├─logger
+│  │      logger.cc
+│  │      logger.hh  //输出log的工具
+│  │
+│  └─parser
+│         Parser.yy  //语法分析器
+│
+└─test
+        test1.spl  //基本语句的测试
+        test2.spl  //给定test
+        test2ans.cc  //给定test的c++转写，用于测试结果
+        test3.spl  //IO测试
+        test4.spl  //给定test
+        test4ans.cc
+        test5.spl  //数组与记录的使用，函数引用传递的测试
+        test6.spl  //给定test
+        test6ans.cc
+
+\end{lstlisting}
 
 \subsection*{分工说明}
 \addcontentsline{toc}{subsection}{分工说明}
@@ -99,17 +166,17 @@
 \begin{table}[H]
     \begin{tabular}{|l|l|l|}
         \hline
-        \textbf{Compiler Component}    & \textbf{Status} & \textbf{Details} \\ \hline
-        Scanning                       &                 &                  \\ \hline
-        Parsing                        &                 &                  \\ \hline
-        Semantic Analysis              &                 &                  \\ \hline
-        Intermediate Code Generation   &                 &                  \\ \hline
-        Intermediate Code Optimization &                 &                  \\ \hline
-        Target Code Generation         &                 &                  \\ \hline
-        Target Code Optimization       &                 &                  \\ \hline
-        Other Optimization             &                 &                  \\ \hline
-        Runtime Environment            &                 &                  \\ \hline
-        Symbol Table                   &                 &                  \\ \hline
+        \textbf{Compiler Component}    & \textbf{Status} & \textbf{Details}   \\ \hline
+        Scanning                       & Flex            &                    \\ \hline
+        Parsing                        & Bison           &                    \\ \hline
+        Semantic Analysis              & AST             &                    \\ \hline
+        Intermediate Code Generation   & LLVM IR         & LLVM IRBuilder     \\ \hline
+        Intermediate Code Optimization & LLVM C++ API    & LLVM Pass Manager  \\ \hline
+        Target Code Generation         & LLVM back-end   & Clang++            \\ \hline
+        Target Code Optimization       & LLVM back-end   & Clang++            \\ \hline
+        Other Optimization             & implemented     &                    \\ \hline
+        Runtime Environment            & implemented     & 全局栈环境          \\ \hline
+        Symbol Table                   & implemented     &                    \\ \hline
     \end{tabular}
 \end{table}
 
