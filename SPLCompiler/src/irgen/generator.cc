@@ -64,14 +64,14 @@ void ASTHandler::setASTHead(ASTNode* head)
     ASTHead = head;
 }
 
-void ASTHandler::codeGen(bool optimize)
+void ASTHandler::codeGen(const std::string &filename, bool optimize)
 {
     if (!ASTHead)
         return;
     printAST();
 
     SymbolTable::initialize();
-    initializeIRGenerator("what", optimize);
+    initializeIRGenerator(filename, optimize);
 
     if (ASTHead->codeGen())
     {

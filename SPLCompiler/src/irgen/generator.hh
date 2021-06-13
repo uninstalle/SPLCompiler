@@ -20,5 +20,5 @@ class ASTHandler
 public:
     ASTHandler() = delete;
     static void setASTHead(ASTNode* head);
-    static void codeGen(bool optimize);
+    static void codeGen(const std::string &filename, bool optimize);
 };

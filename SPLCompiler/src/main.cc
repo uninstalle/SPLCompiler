@@ -27,7 +27,7 @@ int main(int args, char** argv)
         yyparse();
     }
 
-    ASTHandler::codeGen(args == 3);
+    ASTHandler::codeGen(argv[1], args == 3);
 
     return 0;
 }

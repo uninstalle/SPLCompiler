@@ -31,6 +31,8 @@ llvm::Value* ASTNode_Routine::codeGen()
     // Routine Part may change the insert point when creating functions
     IRGenBuilder->SetInsertPoint(&main->getBasicBlockList().back());
 
+    // This will decide if the definition part of main is global or not.
+    // To make them global, delete this.
     SymbolTable::setupNewTable();
 
     if (body->codeGen())
